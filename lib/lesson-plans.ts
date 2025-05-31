@@ -188,7 +188,35 @@ export function getLessonPlansByCategory(category: string): LessonPlan[] {
 }
 
 export function getLessonPlanById(id: string): LessonPlan | undefined {
-  return sampleLessonPlans.find(plan => plan.id === id);
+  // First, try to find in sample lesson plans
+  const samplePlan = sampleLessonPlans.find(plan => plan.id === id);
+  if (samplePlan) {
+    return samplePlan;
+  }
+
+  // If not found in samples, try localStorage
+  // This check ensures localStorage is only accessed on the client-side
+  if (typeof window !== 'undefined') {
+    try {
+      const storedPlansJSON = localStorage.getItem("sunnyLessonPlans");
+      if (storedPlansJSON) {
+        const localStoragePlans = JSON.parse(storedPlansJSON) as LessonPlan[];
+        if (Array.isArray(localStoragePlans)) {
+          const foundPlan = localStoragePlans.find(plan => plan.id === id);
+          if (foundPlan) {
+            return foundPlan;
+          }
+        } else {
+          console.warn("Stored 'sunnyLessonPlans' is not an array.");
+        }
+      }
+    } catch (error) {
+      console.error("Error reading or parsing lesson plans from localStorage:", error);
+      // Fall through to return undefined if an error occurs
+    }
+  }
+
+  return undefined; // Not found in samples or localStorage
 }
 
 export function getActivitiesByAgeRange(min: number, max: number): LearningActivity[] {

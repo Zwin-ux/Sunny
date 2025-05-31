@@ -246,6 +246,36 @@ export default function ViewLessonPage({ params }: { params: { id: string } }) {
                             )}
                           </div>
                         )}
+
+                        {activity.type === "creative" && activity.content && (
+                          <div className="bg-yellow-50 p-4 rounded-lg">
+                            <h4 className="font-medium mb-2">Creative Task</h4>
+                            {activity.content.instructions && (
+                              <div className="mb-3">
+                                <h5 className="text-sm font-semibold mb-1">Instructions:</h5>
+                                <p className="whitespace-pre-wrap">{activity.content.instructions}</p>
+                              </div>
+                            )}
+
+                            {activity.content.examples && Array.isArray(activity.content.examples) && activity.content.examples.length > 0 && (
+                              <div className="mb-3">
+                                <h5 className="text-sm font-semibold mb-1">Examples:</h5>
+                                <ul className="list-disc pl-5 space-y-1">
+                                  {activity.content.examples.map((example: string, idx: number) => (
+                                    <li key={idx} className="text-sm">{example}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {activity.content.submissionType && (
+                              <div>
+                                <h5 className="text-sm font-semibold mb-1">Submission Type:</h5>
+                                <p className="text-sm capitalize">{activity.content.submissionType.replace('-', ' or ')}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
                         {activity.type === "discussion" && activity.content.prompt && (
                           <div className="bg-purple-50 p-4 rounded-lg">

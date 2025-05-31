@@ -12,16 +12,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import SunnyCharacter from "@/components/sunny-character"
-import { ActivityType } from "@/lib/lesson-plans"
+import { ActivityType, LessonPlan, LessonContent } from "@/lib/lesson-plans" // Added LessonPlan, LessonContent
 
 export default function CreateLessonPage() {
   const [lessonTitle, setLessonTitle] = useState("")
   const [lessonDescription, setLessonDescription] = useState("")
   const [category, setCategory] = useState("")
+  const [subcategory, setSubcategory] = useState("") // New state
   const [gradeLevels, setGradeLevels] = useState<string[]>(["K-2"])
-  const [activities, setActivities] = useState<any[]>([])
+  const [keywordsInput, setKeywordsInput] = useState("") // New state for keywords input
+  const [learningOutcomesInput, setLearningOutcomesInput] = useState("") // New state for learning outcomes input
+  const [tagsInput, setTagsInput] = useState("") // New state for tags input
+  const [relatedTopicsInput, setRelatedTopicsInput] = useState("") // New state for related topics input
+  const [activities, setActivities] = useState<any[]>([]) // Consider refining type to LearningActivity[] later
   const [currentTab, setCurrentTab] = useState("basic")
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  // Note: selectedImage is not part of LessonPlan interface, might need to adjust if it's meant to be main image for lesson.
+  // For now, it's a UI helper. The LessonPlan itself doesn't have a top-level 'image' or 'imageUrl'.
+  // LearningActivity has an optional imageUrl.
   
   const availableImages = [
     { name: "Robot", path: "/robot.png", category: "robots" },
@@ -31,15 +39,28 @@ export default function CreateLessonPage() {
     { name: "Thumbs Up", path: "/thimbsup.png", category: "general" }
   ]
 
+  const getDefaultActivityContent = (type: ActivityType): any => {
+    switch (type) {
+      case 'multiple-choice':
+        return { question: '', options: ['', '', '', ''], correctAnswer: '' };
+      case 'creative':
+        return { instructions: '', examplesInput: '', submissionType: 'text' };
+      // Add other types if they have specific default content
+      default:
+        return {};
+    }
+  };
+
   const handleAddActivity = () => {
+    const defaultType: ActivityType = "multiple-choice";
     setActivities([
       ...activities,
       {
-        id: `activity-${activities.length + 1}`,
+        id: `activity-${Date.now()}`, // Use timestamp for more uniqueness
         title: "",
-        type: "multiple-choice" as ActivityType,
+        type: defaultType,
         description: "",
-        content: {},
+        content: getDefaultActivityContent(defaultType),
         difficulty: "beginner",
         estimatedTimeMinutes: 10,
         ageRange: { min: 5, max: 10 }
@@ -48,10 +69,29 @@ export default function CreateLessonPage() {
   }
 
   const handleActivityChange = (index: number, field: string, value: any) => {
-    const updatedActivities = [...activities]
-    updatedActivities[index][field] = value
-    setActivities(updatedActivities)
+    const updatedActivities = [...activities];
+    updatedActivities[index][field] = value;
+
+    // If the type is changed, reset the content to the new type's default
+    if (field === 'type') {
+      updatedActivities[index].content = getDefaultActivityContent(value as ActivityType);
+    }
+    setActivities(updatedActivities);
   }
+
+  const handleActivityContentChange = (activityIndex: number, contentField: string, value: any) => {
+    const updatedActivities = [...activities];
+    updatedActivities[activityIndex].content[contentField] = value;
+    setActivities(updatedActivities);
+  };
+
+  const handleActivityOptionChange = (activityIndex: number, optionIndex: number, optionValue: string) => {
+    const updatedActivities = [...activities];
+    const currentOptions = updatedActivities[activityIndex].content.options || [];
+    currentOptions[optionIndex] = optionValue;
+    updatedActivities[activityIndex].content.options = [...currentOptions]; // Ensure re-render
+    setActivities(updatedActivities);
+  };
 
   const handleGradeLevelToggle = (level: string) => {
     if (gradeLevels.includes(level)) {
@@ -62,16 +102,68 @@ export default function CreateLessonPage() {
   }
 
   const handleSubmit = () => {
-    // In a real implementation, this would save to a database
-    console.log({
-      title: lessonTitle,
+    const newId = Date.now().toString();
+    const currentDate = new Date().toISOString();
+
+    const keywords = keywordsInput.split(',').map(k => k.trim()).filter(k => k);
+    const learningOutcomes = learningOutcomesInput.split('\n').map(lo => lo.trim()).filter(lo => lo);
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
+    const relatedTopics = relatedTopicsInput.split(',').map(rt => rt.trim()).filter(rt => rt);
+
+    const lessonContent: LessonContent = {
+      id: `${newId}-content`,
+      title: lessonTitle, // Or a more specific content title if desired
       description: lessonDescription,
+      keywords,
+      learningOutcomes,
+      // Process activities to ensure content is correctly structured, e.g., for creative examples
+      activities: activities.map(activity => {
+        if (activity.type === 'creative' && activity.content.examplesInput) {
+          return {
+            ...activity,
+            content: {
+              ...activity.content,
+              examples: activity.content.examplesInput.split(',').map((ex: string) => ex.trim()).filter((ex: string) => ex),
+              // examplesInput: undefined // Optionally remove examplesInput after processing
+            }
+          };
+        }
+        return activity;
+      }),
+      relatedTopics,
+      additionalResources: [] // Default to empty for now
+    };
+
+    const newLessonPlan: LessonPlan = {
+      id: newId,
+      title: lessonTitle,
       category,
-      gradeLevels,
-      activities,
-      image: selectedImage
-    })
-    alert("Lesson plan created successfully!")
+      subcategory: subcategory || undefined, // Optional field
+      gradeLevel: gradeLevels,
+      author: {
+        name: "Sunny AI" // Hardcoded as per requirement
+      },
+      isPublic: false, // Default to false as per requirement
+      dateCreated: currentDate,
+      dateModified: currentDate,
+      content: lessonContent,
+      tags
+    };
+
+    try {
+      const existingPlansJSON = localStorage.getItem("sunnyLessonPlans");
+      const existingPlans: LessonPlan[] = existingPlansJSON ? JSON.parse(existingPlansJSON) : [];
+      existingPlans.push(newLessonPlan);
+      localStorage.setItem("sunnyLessonPlans", JSON.stringify(existingPlans));
+      alert("Lesson plan saved to localStorage successfully!");
+      // Consider clearing form or redirecting
+      // setLessonTitle("");
+      // setLessonDescription("");
+      // ... reset other fields
+    } catch (error) {
+      console.error("Failed to save lesson plan to localStorage:", error);
+      alert("Error saving lesson plan. Check console for details.");
+    }
   }
 
   return (
@@ -125,6 +217,16 @@ export default function CreateLessonPage() {
                         onChange={(e) => setLessonDescription(e.target.value)}
                       />
                     </div>
+
+                    <div>
+                      <Label htmlFor="subcategory">Subcategory (Optional)</Label>
+                      <Input
+                        id="subcategory"
+                        placeholder="e.g., Algebra, Early Readers"
+                        value={subcategory}
+                        onChange={(e) => setSubcategory(e.target.value)}
+                      />
+                    </div>
                     
                     <div>
                       <Label htmlFor="category">Category</Label>
@@ -138,6 +240,27 @@ export default function CreateLessonPage() {
                           <SelectItem value="ideas">💡 Ideas</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="keywords">Keywords (comma-separated)</Label>
+                      <Input
+                        id="keywords"
+                        placeholder="e.g., addition, colors, planets"
+                        value={keywordsInput}
+                        onChange={(e) => setKeywordsInput(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="learningOutcomes">Learning Outcomes (one per line)</Label>
+                      <Textarea
+                        id="learningOutcomes"
+                        placeholder="Students will be able to identify...\nStudents will learn to collaborate on..."
+                        rows={3}
+                        value={learningOutcomesInput}
+                        onChange={(e) => setLearningOutcomesInput(e.target.value)}
+                      />
                     </div>
                     
                     <div>
@@ -158,9 +281,29 @@ export default function CreateLessonPage() {
                         ))}
                       </div>
                     </div>
+
+                    <div>
+                      <Label htmlFor="tags">Tags (comma-separated)</Label>
+                      <Input
+                        id="tags"
+                        placeholder="e.g., fun, interactive, beginner"
+                        value={tagsInput}
+                        onChange={(e) => setTagsInput(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="relatedTopics">Related Topics (comma-separated)</Label>
+                      <Input
+                        id="relatedTopics"
+                        placeholder="e.g., counting, space exploration"
+                        value={relatedTopicsInput}
+                        onChange={(e) => setRelatedTopicsInput(e.target.value)}
+                      />
+                    </div>
                     
                     <div>
-                      <Label>Featured Image</Label>
+                      <Label>Featured Image (UI Only)</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
                         {availableImages.map((image) => (
                           <div 
@@ -195,13 +338,13 @@ export default function CreateLessonPage() {
                 <TabsContent value="activities">
                   <div className="space-y-6">
                     <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-semibold">Learning Activities</h2>
+                      <h2 className="text-xl font-semibold">Learning Activities (Structure defined in lib/lesson-plans.ts)</h2>
                       <Button onClick={handleAddActivity}>Add Activity</Button>
                     </div>
                     
                     {activities.length === 0 ? (
                       <Card className="p-8 text-center">
-                        <p className="text-gray-600 mb-4">No activities added yet</p>
+                        <p className="text-gray-600 mb-4">No activities added yet. Note: current activities are stored as `any[]`. Ensure structure matches `LearningActivity` for full compatibility.</p>
                         <Button onClick={handleAddActivity}>
                           Add Your First Activity
                         </Button>
@@ -209,7 +352,7 @@ export default function CreateLessonPage() {
                     ) : (
                       <div className="space-y-6">
                         {activities.map((activity, index) => (
-                          <Card key={activity.id} className="p-4">
+                          <Card key={activity.id} className="p-4"> {/* Ensure activity.id is unique and present */}
                             <div className="flex justify-between items-center mb-4">
                               <h3 className="font-semibold">Activity {index + 1}</h3>
                               <Button 
@@ -240,7 +383,7 @@ export default function CreateLessonPage() {
                                 <Label htmlFor={`activity-${index}-type`}>Activity Type</Label>
                                 <Select 
                                   value={activity.type}
-                                  onValueChange={(value) => handleActivityChange(index, 'type', value)}
+                                  onValueChange={(value) => handleActivityChange(index, 'type', value as ActivityType)} // Cast to ActivityType
                                 >
                                   <SelectTrigger id={`activity-${index}-type`}>
                                     <SelectValue />
@@ -265,6 +408,82 @@ export default function CreateLessonPage() {
                                   rows={3}
                                 />
                               </div>
+
+                              {/* --- Dynamic Content Fields --- */}
+                              {activity.type === 'multiple-choice' && activity.content && (
+                                <div className="space-y-3 pt-2 border-t mt-3">
+                                  <h4 className="font-medium text-sm">Multiple Choice Content:</h4>
+                                  <div>
+                                    <Label htmlFor={`activity-${index}-mc-question`}>Question</Label>
+                                    <Input
+                                      id={`activity-${index}-mc-question`}
+                                      value={activity.content.question || ''}
+                                      onChange={(e) => handleActivityContentChange(index, 'question', e.target.value)}
+                                      placeholder="What is 2 + 2?"
+                                    />
+                                  </div>
+                                  <Label>Options (Mark the correct answer below)</Label>
+                                  {(activity.content.options || ['', '', '', '']).map((option: string, optIndex: number) => (
+                                    <Input
+                                      key={optIndex}
+                                      id={`activity-${index}-mc-option-${optIndex}`}
+                                      value={option}
+                                      onChange={(e) => handleActivityOptionChange(index, optIndex, e.target.value)}
+                                      placeholder={`Option ${optIndex + 1}`}
+                                    />
+                                  ))}
+                                  <div>
+                                    <Label htmlFor={`activity-${index}-mc-correct`}>Correct Answer (type the exact text of the correct option)</Label>
+                                    <Input
+                                      id={`activity-${index}-mc-correct`}
+                                      value={activity.content.correctAnswer || ''}
+                                      onChange={(e) => handleActivityContentChange(index, 'correctAnswer', e.target.value)}
+                                      placeholder="e.g., Option 1"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {activity.type === 'creative' && activity.content && (
+                                <div className="space-y-3 pt-2 border-t mt-3">
+                                  <h4 className="font-medium text-sm">Creative Content:</h4>
+                                  <div>
+                                    <Label htmlFor={`activity-${index}-creative-instructions`}>Instructions</Label>
+                                    <Textarea
+                                      id={`activity-${index}-creative-instructions`}
+                                      value={activity.content.instructions || ''}
+                                      onChange={(e) => handleActivityContentChange(index, 'instructions', e.target.value)}
+                                      placeholder="Describe the creative task..."
+                                      rows={3}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`activity-${index}-creative-examples`}>Examples (comma-separated)</Label>
+                                    <Input
+                                      id={`activity-${index}-creative-examples`}
+                                      value={activity.content.examplesInput || ''}
+                                      onChange={(e) => handleActivityContentChange(index, 'examplesInput', e.target.value)}
+                                      placeholder="e.g., draw a cat, write a short story"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`activity-${index}-creative-submission`}>Submission Type</Label>
+                                    <Select
+                                      value={activity.content.submissionType || 'text'}
+                                      onValueChange={(value) => handleActivityContentChange(index, 'submissionType', value)}
+                                    >
+                                      <SelectTrigger id={`activity-${index}-creative-submission`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="text">Text Only</SelectItem>
+                                        <SelectItem value="text-or-image">Text or Image</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              )}
+                               {/* TODO: Add fields for difficulty, estimatedTimeMinutes, ageRange, (already top level) imageUrl (LearningActivity) */}
                             </div>
                           </Card>
                         ))}
@@ -284,9 +503,9 @@ export default function CreateLessonPage() {
                 
                 <TabsContent value="resources">
                   <div className="space-y-6">
-                    <h2 className="text-xl font-semibold">Additional Resources</h2>
+                    <h2 className="text-xl font-semibold">Additional Resources (Not saved yet)</h2>
                     <p className="text-gray-600">
-                      Add links to helpful videos, articles, or worksheets for this lesson
+                      Add links to helpful videos, articles, or worksheets for this lesson. (Functionality to add these to the `LessonPlan` object is not yet implemented in the UI form below but will be an empty array in localStorage.)
                     </p>
                     
                     <div className="space-y-4">
@@ -315,7 +534,7 @@ export default function CreateLessonPage() {
                         </Select>
                       </div>
                       
-                      <Button variant="outline" className="w-full">Add Resource</Button>
+                      <Button variant="outline" className="w-full" onClick={() => alert("Adding resources to the lesson plan data is not implemented yet.")}>Add Resource</Button>
                     </div>
                     
                     <div className="flex justify-between pt-4">

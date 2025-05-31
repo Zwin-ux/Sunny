@@ -9,25 +9,53 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import SunnyCharacter from "@/components/sunny-character"
-import { getLessonPlansByCategory, type LessonPlan } from "@/lib/lesson-plans"
+// Import sampleLessonPlans directly and LessonPlan type
+import { sampleLessonPlans, type LessonPlan } from "@/lib/lesson-plans"
 
 export default function TeacherDashboard() {
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
+  const [allLessonPlans, setAllLessonPlans] = useState<LessonPlan[]>([]); // Holds combined plans
   const [filteredPlans, setFilteredPlans] = useState<LessonPlan[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
-    // In a real implementation, this would fetch from an API
-    const mathPlans = getLessonPlansByCategory("math");
-    const robotPlans = getLessonPlansByCategory("robots");
-    const allPlans = [...mathPlans, ...robotPlans];
-    setLessonPlans(allPlans);
-    setFilteredPlans(allPlans);
-  }, []);
+    let combinedPlans: LessonPlan[] = [];
+    let localStoragePlans: LessonPlan[] = [];
+
+    // Attempt to load plans from localStorage
+    try {
+      const storedPlansJSON = localStorage.getItem("sunnyLessonPlans");
+      if (storedPlansJSON) {
+        localStoragePlans = JSON.parse(storedPlansJSON) as LessonPlan[];
+        // Basic type check, you might want more robust validation in a real app
+        if (!Array.isArray(localStoragePlans)) {
+          console.warn("localStorage data is not an array, resetting to empty.");
+          localStoragePlans = [];
+        }
+      }
+    } catch (error) {
+      console.error("Failed to parse lesson plans from localStorage:", error);
+      localStoragePlans = []; // Reset to empty if parsing fails
+    }
+
+    // Get IDs of localStorage plans to avoid duplicates and give precedence
+    const localStoragePlanIds = new Set(localStoragePlans.map(p => p.id));
+
+    // Filter sample plans to exclude those whose IDs are in localStorage
+    const uniqueSamplePlans = sampleLessonPlans.filter(
+      samplePlan => !localStoragePlanIds.has(samplePlan.id)
+    );
+
+    // Combine localStorage plans (which take precedence) with unique sample plans
+    combinedPlans = [...localStoragePlans, ...uniqueSamplePlans];
+
+    setAllLessonPlans(combinedPlans);
+    // Initial set of filtered plans is all combined plans
+    // The filtering useEffect below will handle actual filtering
+  }, []); // Runs once on component mount
 
   useEffect(() => {
-    let result = lessonPlans;
+    let result = allLessonPlans;
     
     // Filter by category if not "all"
     if (selectedCategory !== "all") {
@@ -46,7 +74,7 @@ export default function TeacherDashboard() {
     }
     
     setFilteredPlans(result);
-  }, [searchTerm, selectedCategory, lessonPlans]);
+  }, [searchTerm, selectedCategory, allLessonPlans]); // Depend on allLessonPlans now
 
   return (
     <main className="flex min-h-screen flex-col p-4 bg-sky-100">
