@@ -238,6 +238,12 @@ export default function LessonPage({ params }: { params: { lessonId: string } })
           border: 'border-purple-400',
           text: 'text-purple-800'
         }
+      case 'space':
+        return {
+          bg: 'bg-indigo-300',
+          border: 'border-indigo-400',
+          text: 'text-indigo-800'
+        }
       default:
         return {
           bg: 'bg-green-300',
@@ -298,13 +304,13 @@ export default function LessonPage({ params }: { params: { lessonId: string } })
         <div className={`${clayCard} ${colors.bg} ${colors.border} p-6 mb-8 transform -rotate-1`}>
           <div className="flex items-start gap-6">
             <div className="relative w-20 h-20 flex-shrink-0">
-              {lesson.category === 'math' && (
+              {(lesson.category === 'math' || lesson.category === 'space') && (
                 <Image src="/star.png" alt={lesson.category} fill className="object-contain drop-shadow-md" />
               )}
               {lesson.category === 'robots' && (
                 <Image src="/robot.png" alt={lesson.category} fill className="object-contain drop-shadow-md" />
               )}
-              {!['math', 'robots'].includes(lesson.category) && (
+              {!['math', 'robots', 'space'].includes(lesson.category) && (
                 <Image src="/bulb.png" alt={lesson.category} fill className="object-contain drop-shadow-md" />
               )}
             </div>

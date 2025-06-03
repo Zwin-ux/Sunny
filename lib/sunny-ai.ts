@@ -12,6 +12,8 @@ export async function generateSunnyResponse(prompt: string, name: string): Promi
     robot:
       "Robots are machines that can be programmed to do tasks! 🤖 Some robots can dance, some can explore Mars, and some can even help doctors perform surgery! What kind of robot would you invent?",
     idea: "Ideas are like little lightbulbs that pop up in your mind! 💡 The best ideas often come when you're having fun or solving problems. What's something you'd like to invent?",
+    space:
+      "Space is full of amazing planets and stars! 🌌 Did you know there are more stars in the universe than grains of sand on Earth? Which planet is your favorite?",
     hello: `Hi there, ${name}! It's great to chat with you! What would you like to learn about today?`,
     "how are you": `I'm sunny and bright today, thanks for asking! How about you, ${name}? What would you like to explore?`,
   }
@@ -57,6 +59,12 @@ export async function generateMiniChallenge(topic: string): Promise<any> {
       question: "Which of these helps a robot 'see'?",
       options: ["Camera", "Speaker", "Wheel", "Battery"],
       correctAnswer: "Camera",
+    },
+    space: {
+      type: "multiple-choice",
+      question: "Which planet is known as the Red Planet?",
+      options: ["Earth", "Mars", "Jupiter", "Venus"],
+      correctAnswer: "Mars",
     },
   }
 
