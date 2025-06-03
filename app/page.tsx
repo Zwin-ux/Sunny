@@ -134,6 +134,11 @@ export default function Home() {
         recommendLesson = true
         lessonId = "robots-intro-001"
         break
+      case "space":
+        prompt = "Tell me something cool about space!"
+        recommendLesson = true
+        lessonId = "space-planets-001"
+        break
     }
 
     setQuestion(prompt)
@@ -200,6 +205,22 @@ export default function Home() {
             window.location.href = `/lesson/${lessonId}`
           }, 1500)
           
+        } else if (recentText.includes("space") || recentText.includes("planet")) {
+          lessonId = "space-planets-001"
+
+          setMessages(prev => [
+            ...prev,
+            {
+              type: "assistant",
+              content: "Awesome! Let's start the space lesson. I'll take you there now!",
+            },
+          ])
+
+          // Short delay before redirecting to the lesson
+          setTimeout(() => {
+            window.location.href = `/lesson/${lessonId}`
+          }, 1500)
+
         } else {
           // Default to math patterns lesson
           setMessages(prev => [
@@ -608,6 +629,22 @@ export default function Home() {
                       </div>
                     </div>
                   </Link>
+                  <Link href="/lesson/space-planets-001" className="block">
+                    <div className={`${clayCard} border-indigo-400 bg-indigo-300 p-4 transform rotate-1 hover:rotate-2 hover:scale-105 transition-all duration-300 cursor-pointer`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-lg font-bold text-indigo-800 mb-1">Space Adventure</p>
+                          <div className="mt-1 flex items-center">
+                            <span className="text-indigo-800 font-medium px-3 py-1 bg-indigo-200 rounded-full text-sm mr-2 border-2 border-indigo-400">Space</span>
+                            <span className="text-sm font-bold text-indigo-800">10 min</span>
+                          </div>
+                        </div>
+                        <div className="relative w-10 h-10 animate-pulse-slow">
+                          <Image src="/star.png" alt="Space" fill className="object-contain drop-shadow-md" />
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               </div>
             )}
@@ -617,8 +654,8 @@ export default function Home() {
               <div className="mb-6">
                 <p className="text-lg font-bold text-purple-800 mb-3">What do you want to talk about?</p>
                 <div className="flex flex-wrap gap-3">
-                  <button 
-                    onClick={() => handleTopicSelect('math')} 
+                  <button
+                    onClick={() => handleTopicSelect('math')}
                     className="px-5 py-3 bg-blue-300 text-blue-800 rounded-full text-lg font-bold border-4 border-blue-400 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 transform hover:-rotate-3"
                   >
                     Math Help 🔢
@@ -629,11 +666,17 @@ export default function Home() {
                   >
                     Cool Ideas 💡
                   </button>
-                  <button 
-                    onClick={() => handleTopicSelect('robots')} 
+                  <button
+                    onClick={() => handleTopicSelect('robots')}
                     className="px-5 py-3 bg-orange-300 text-orange-800 rounded-full text-lg font-bold border-4 border-orange-400 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 transform hover:-rotate-3"
                   >
                     Robots 🤖
+                  </button>
+                  <button
+                    onClick={() => handleTopicSelect('space')}
+                    className="px-5 py-3 bg-indigo-300 text-indigo-800 rounded-full text-lg font-bold border-4 border-indigo-400 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 transform hover:rotate-3"
+                  >
+                    Space 🪐
                   </button>
                 </div>
               </div>
