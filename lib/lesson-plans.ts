@@ -179,6 +179,69 @@ export const sampleLessonPlans: LessonPlan[] = [
       ]
     },
     tags: ['robots', 'technology', 'STEM']
+  },
+  {
+    id: 'space-planets-001',
+    title: 'Exploring the Solar System',
+    category: 'space',
+    gradeLevel: ['3-5', '6-8'],
+    author: {
+      name: 'Sunny AI',
+      id: 'system'
+    },
+    isPublic: true,
+    dateCreated: new Date().toISOString(),
+    dateModified: new Date().toISOString(),
+    content: {
+      id: 'space-planets-001-content',
+      title: 'Our Amazing Solar System',
+      description: 'Discover the planets and what makes each one special',
+      keywords: ['space', 'planets', 'solar system'],
+      learningOutcomes: [
+        'Identify planets in our solar system',
+        'Describe key features of each planet',
+        'Understand the order of planets from the sun'
+      ],
+      activities: [
+        {
+          id: 'planet-order',
+          type: 'multiple-choice',
+          title: 'Planet Order',
+          description: 'Which planet is third from the sun?',
+          difficulty: 'beginner',
+          estimatedTimeMinutes: 5,
+          ageRange: { min: 8, max: 12 },
+          content: {
+            question: 'Which planet is third from the sun?',
+            options: ['Earth', 'Mars', 'Venus', 'Mercury'],
+            correctAnswer: 'Earth'
+          }
+        },
+        {
+          id: 'my-planet',
+          type: 'creative',
+          title: 'Design Your Planet',
+          description: 'Imagine your own planet',
+          difficulty: 'beginner',
+          estimatedTimeMinutes: 10,
+          ageRange: { min: 8, max: 12 },
+          content: {
+            instructions: 'Design your own planet! Describe what it looks like and who might live there.',
+            examples: ['A planet covered in oceans', 'A planet with purple trees'],
+            submissionType: 'text'
+          }
+        }
+      ],
+      relatedTopics: ['astronomy', 'science'],
+      additionalResources: [
+        {
+          title: 'NASA Kids Club',
+          url: 'https://www.nasa.gov/kidsclub/index.html',
+          type: 'game'
+        }
+      ]
+    },
+    tags: ['space', 'planets', 'science']
   }
 ];
 
