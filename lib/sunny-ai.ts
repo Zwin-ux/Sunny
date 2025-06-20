@@ -138,11 +138,12 @@ function selectTeachingStrategy(
 
 export async function generateSunnyResponse(
   conversation: (UserMessage | AssistantMessage)[],
-  studentProfile: StudentProfile
+  studentProfile: StudentProfile,
+  mode: 'chat' | 'summary' | 'flashcards' = 'chat'
 ): Promise<ReadableStream<any>> {
   const { name, emotion, learningStyle, difficulty } = studentProfile;
 
-  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your goal is to make learning fun, engaging, and accessible. You are talking to ${name}, who is feeling ${emotion} today.
+  let systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your goal is to make learning fun, engaging, and accessible. You are talking to ${name}, who is feeling ${emotion} today.
 
 Your teaching approach must be adaptive and nurturing. Follow these principles:
 1.  **Adopt a Persona**: Be a friendly, patient, and curious robot friend. Use simple language, short sentences, and plenty of emojis. ✨
@@ -154,11 +155,21 @@ Your teaching approach must be adaptive and nurturing. Follow these principles:
 
 Keep your responses concise and focused. Aim for just 2-3 sentences per message.`;
 
+  if (mode === 'summary') {
+    systemMessageContent += '\nPlease provide a short summary of the conversation so far in 3 sentences.';
+  } else if (mode === 'flashcards') {
+    systemMessageContent +=
+      '\nCreate three simple flashcards to review the main topic. Respond only with JSON in the form [{"front":"question","back":"answer"}].';
+  }
+
   const messagesForApi = [
     { role: 'system' as const, content: systemMessageContent },
-    ...conversation.map(msg => ({ 
-      role: msg.role, 
-      content: msg.content as string // Assuming content is always string for now
+    ...conversation.map(msg => ({
+      role: msg.role,
+      content:
+        typeof msg.content === 'string'
+          ? msg.content
+          : JSON.stringify(msg.content)
     }))
   ];
 

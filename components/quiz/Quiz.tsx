@@ -60,9 +60,14 @@ export function Quiz({ lessonId, onComplete }: QuizProps) {
 
     const correct = selectedOption === currentQuestion.correctAnswer;
     setIsCorrect(correct);
-    
+
     if (correct) {
       setScore(prev => prev + 1);
+      fetch('/api/user/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: 10 })
+      }).catch(() => {})
     }
   };
 

@@ -177,27 +177,42 @@ export default function Home() {
     
     // Auto-send the message if there's content
     if (message && !isLoading) {
-      handleSendMessage();
+      handleSendMessage(undefined, message);
     }
   }
 
   // Handle sending a message
-  const handleSendMessage = useCallback(async () => {
-    if (!question.trim()) return;
+  const handleSendMessage = useCallback(async (
+    mode?: 'summary' | 'flashcards',
+    customText?: string
+  ) => {
+    const text = customText ?? question
+    if (!text.trim()) return;
 
     const userMessage: UserMessage = {
       id: `user-${Date.now()}`,
       type: 'user',
       role: 'user',
-      content: question,
+      content: text,
       name: name || 'User',
       timestamp: Date.now(),
     };
 
-    const newMessages: Message[] = [...messages, userMessage];
-    setMessages(newMessages);
+   const newMessages: Message[] = [...messages, userMessage];
+   setMessages(newMessages);
+    try {
+      await fetch('/api/user/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+    } catch (e) {
+      console.error('Failed to save user message');
+    }
     setIsLoading(true);
-    setQuestion('');
+    if (!customText) {
+      setQuestion('');
+    }
 
     try {
       const studentProfile: StudentProfile = {
@@ -212,7 +227,11 @@ export default function Home() {
         (msg): msg is UserMessage | AssistantMessage => msg.type === 'user' || msg.type === 'assistant'
       );
 
-      const stream = await generateSunnyResponse(apiMessages, studentProfile);
+   const stream = await generateSunnyResponse(
+      apiMessages,
+      studentProfile,
+      mode ?? 'chat'
+    );
       
       let fullResponse = '';
       const assistantId = `assistant-${Date.now()}`;
@@ -247,10 +266,54 @@ export default function Home() {
       }
 
       if (fullResponse) {
-        setLastAssistantMessageContent(fullResponse);
-        if (isVoiceModeActive) {
-          setTextToSpeak(fullResponse);
+        let finalContent: any = fullResponse
+        let finalType: Message['type'] = 'assistant'
+        if (mode === 'flashcards') {
+          try {
+            const parsed = JSON.parse(fullResponse)
+            if (Array.isArray(parsed)) {
+              finalContent = parsed
+              finalType = 'flashcards'
+            }
+          } catch {
+            // fallback to string
+          }
         }
+
+        setLastAssistantMessageContent(
+          typeof finalContent === 'string' ? finalContent : ''
+        )
+        if (isVoiceModeActive && typeof finalContent === 'string') {
+          setTextToSpeak(finalContent)
+        }
+        const savedMessage: Message = {
+          id: assistantId,
+          type: finalType,
+          role: 'assistant',
+          content:
+            typeof finalContent === 'string'
+              ? finalContent
+              : (finalContent as any),
+          timestamp: Date.now(),
+          name: 'Sunny'
+        }
+        try {
+          const apiMessage = {
+            ...savedMessage,
+            content:
+              typeof finalContent === 'string'
+                ? finalContent
+                : JSON.stringify(finalContent)
+          }
+          await fetch('/api/user/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: apiMessage })
+          })
+        } catch (e) {
+          console.error('Failed to save assistant message')
+        }
+        setMessages(prev => prev.map(m => (m.id === assistantId ? savedMessage : m)))
       }
 
     } catch (error) {
@@ -313,6 +376,18 @@ export default function Home() {
     }
   };
 
+  const requestSummary = () => {
+    if (!isLoading) {
+      handleSendMessage('summary', 'Could you summarize this for me?');
+    }
+  };
+
+  const requestFlashcards = () => {
+    if (!isLoading) {
+      handleSendMessage('flashcards', 'Can I have some flashcards?');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* Onboarding Flow */}
@@ -368,14 +443,22 @@ export default function Home() {
           <Link href="/teacher">
             <button className={`${clayButton} bg-blue-400 border-4 border-blue-500 text-blue-800 flex items-center gap-2`}>
               <div className="relative w-8 h-8">
-                <Image 
-                  src="/bulb.png" 
-                  alt="Teacher" 
-                  fill 
-                  className="object-contain" 
+                <Image
+                  src="/bulb.png"
+                  alt="Teacher"
+                  fill
+                  className="object-contain"
                 />
               </div>
               <span>Teachers</span>
+            </button>
+          </Link>
+          <Link href="/scoreboard">
+            <button className={`${clayButton} bg-green-400 border-4 border-green-500 text-green-800 flex items-center gap-2`}>
+              <div className="relative w-8 h-8">
+                <Image src="/star.png" alt="Scoreboard" fill className="object-contain" />
+              </div>
+              <span>Scores</span>
             </button>
           </Link>
         </div>
@@ -767,6 +850,14 @@ export default function Home() {
                       )}
                     </Button>
                   </div>
+                  <div className="flex gap-3 mt-3">
+                    <Button type="button" variant="outline" onClick={requestSummary}>
+                      Get Summary
+                    </Button>
+                    <Button type="button" variant="outline" onClick={requestFlashcards}>
+                      Flashcards
+                    </Button>
+                  </div>
                 </form>
               </div>
             )}
@@ -782,6 +873,9 @@ export default function Home() {
             <span className="text-2xl">☀️</span>
             <Link href="/teacher" className="inline-block px-4 py-2 bg-yellow-300 text-yellow-800 rounded-full border-2 border-yellow-400 hover:bg-yellow-400 transition-all hover:scale-110 hover:rotate-3 transform">
               Teacher Zone
+            </Link>
+            <Link href="/scoreboard" className="inline-block px-4 py-2 bg-green-300 text-green-800 rounded-full border-2 border-green-400 hover:bg-green-400 transition-all hover:scale-110 hover:-rotate-3 transform">
+              Scoreboard
             </Link>
           </p>
         </div>

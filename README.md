@@ -2,6 +2,8 @@
 
 A cheerful, educational AI chat application designed to make learning fun for children while providing customizable lesson plans for teachers.
 
+Sunny's main goal is to encourage kids to keep learning through short quizzes and playful challenges. Correct answers earn points which appear on a global scoreboard so everyone can celebrate their progress together.
+
 ![Sunny AI for Kids](public/rainbow.png)
 
 ---
@@ -20,6 +22,7 @@ A cheerful, educational AI chat application designed to make learning fun for ch
 - **Teacher Dashboard**: Create and manage custom lesson plans tailored to your classroom needs
 - **Customizable Content**: Easily adapt lessons to different grade levels, subjects, and learning styles
 - **Responsive & Accessible Design**: Works great on desktops, tablets, and interactive whiteboards. Built for accessibility (color, font, keyboard nav).
+- **Quiz Scoreboard**: Earn points for correct answers and see how you rank on the shared scoreboard
 
 ## Quick Start for Teachers
 

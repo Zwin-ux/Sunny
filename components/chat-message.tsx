@@ -1,14 +1,16 @@
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { 
+import {
   Message,
   Challenge,
   FeedbackContent,
-  ChatMessageProps 
+  Flashcard,
+  ChatMessageProps
 } from "@/types/chat";
 import TypingIndicator from "./typing-indicator";
 import { formatMessageTimestamp, getMessageSenderName } from "@/lib/message-utils";
-import { CheckCircle, XCircle, HelpCircle } from "lucide-react";
+import { CheckCircle, XCircle, HelpCircle, BookOpen } from "lucide-react";
+import { FlashcardSet } from "./flashcard";
 
 // --- Type Guards ---
 
@@ -85,6 +87,16 @@ function renderFeedbackContent(content: FeedbackContent) {
   );
 }
 
+function isFlashcards(content: any): content is Flashcard[] {
+  return (
+    Array.isArray(content) &&
+    content.length > 0 &&
+    typeof content[0] === 'object' &&
+    'front' in content[0] &&
+    'back' in content[0]
+  )
+}
+
 // --- Main Component ---
 
 export default function ChatMessage(props: ChatMessageProps) {
@@ -112,6 +124,9 @@ export default function ChatMessage(props: ChatMessageProps) {
     if (isFeedback(content)) {
       return renderFeedbackContent(content);
     }
+    if (isFlashcards(content)) {
+      return <FlashcardSet cards={content} />;
+    }
     if (typeof content === 'string') {
       return <div className="whitespace-pre-wrap">{content}</div>;
     }
@@ -130,6 +145,8 @@ export default function ChatMessage(props: ChatMessageProps) {
             : <XCircle className="w-4 h-4 text-red-500" />;
         }
         return null;
+      case 'flashcards':
+        return <BookOpen className="w-4 h-4 text-purple-500" />;
       default:
         return null;
     }
