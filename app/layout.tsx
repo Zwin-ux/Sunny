@@ -1,16 +1,13 @@
-import type React from "react"
+'use client';
+
+import React from "react"
 import "./globals.css"
-import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { LanguageProvider } from "@/contexts/LanguageContext"
+import { OnboardingProvider } from "@/contexts/OnboardingContext"
 
 const inter = Inter({ subsets: ["latin"] })
-
-export const metadata: Metadata = {
-  title: "Sunny - AI for Kids",
-  description: "A friendly AI chatbot that helps kids learn in a fun way",
-    generator: 'v0.dev'
-}
 
 export default function RootLayout({
   children,
@@ -19,9 +16,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <title>Sunny - AI for Kids</title>
+        <meta name="description" content="A friendly AI chatbot that helps kids learn in a fun way" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
+          <LanguageProvider>
+            <OnboardingProvider>
+              {children}
+            </OnboardingProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

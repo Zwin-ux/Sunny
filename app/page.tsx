@@ -1,37 +1,55 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import SunnyCharacter from "@/components/sunny-character"
-import EmotionSelector from "@/components/emotion-selector"
-import TopicBubbles from "@/components/topic-bubbles"
-import ChatMessage from "@/components/chat-message"
-import RewardBadge from "@/components/reward-badge"
-import { generateSunnyResponse } from "@/lib/sunny-ai"
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { generateSunnyResponse } from '@/lib/sunny-ai';
+import { Message, SunnyChatMessage } from '@/types/chat';
+import EmotionSelector from '@/components/emotion-selector';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, Star, Award, Heart, Lightbulb, Bot, Rocket, BookOpen, BookMarked, BookCheck, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import TopicBubbles from "@/components/topic-bubbles";
+import ChatMessage from "@/components/chat-message";
+import RewardBadge from "@/components/reward-badge";
+import SunnyCharacter from "@/components/sunny-character";
+import Link from "next/link";
+import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { VoiceControls } from "@/components/voice-controls";
+import { cn } from "@/lib/utils";
 
 // CSS for claymation effects
 const clayShadow = "shadow-[6px_6px_0px_0px_rgba(0,0,0,0.15)]"
 const clayButton = `rounded-full py-3 px-6 font-bold text-lg transition-all duration-300 transform hover:scale-105 active:scale-95 ${clayShadow} hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.15)]`
 const clayCard = `bg-white rounded-3xl border-4 ${clayShadow} hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.15)] transition-all duration-300`
-const clayInput = "rounded-full border-4 border-purple-300 bg-white py-4 px-6 text-lg focus:border-yellow-400 focus:ring-4 focus:ring-yellow-200 transition-all duration-200"
+const clayInput = `rounded-2xl border-4 border-purple-300 bg-white py-4 px-6 text-lg text-gray-800 placeholder-gray-500 
+  focus:outline-none focus:ring-4 focus:ring-yellow-200 focus:border-yellow-400 
+  transition-all duration-200 shadow-sm ${clayShadow} 
+  hover:shadow-md hover:translate-y-[-2px]`
 
 export default function Home() {
+  const { isOnboardingComplete } = useOnboarding();
   const searchParams = useSearchParams();
   const [name, setName] = useState<string>("") 
   const [isNameSet, setIsNameSet] = useState<boolean>(false)
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null)
   const [question, setQuestion] = useState<string>("") 
-  const [messages, setMessages] = useState<Array<{ type: string; content: string }>>([]) 
+  const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false) 
   const [rewardCount, setRewardCount] = useState<number>(0) 
   const [showReward, setShowReward] = useState<boolean>(false)
-  const [completedLesson, setCompletedLesson] = useState<any>(null)
+  const [isListening, setIsListening] = useState<boolean>(false)
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(false)
+  const [completedLesson, setCompletedLesson] = useState<{
+    id: string;
+    title: string;
+    completedAt: string;
+  } | null>(null)
   
   // Check for completed lessons when the component mounts
   useEffect(() => {
@@ -59,9 +77,13 @@ export default function Home() {
     if (!completedLesson) return
     
     // Add Sunny's response about the completed lesson
-    const lessonResponse = {
-      type: "assistant",
-      content: `Great job completing the "${completedLesson.title}" lesson! What did you learn? Would you like to talk more about it?`
+    const lessonResponse: Message = {
+      id: `assistant-${Date.now()}`,
+      type: 'assistant' as const,
+      content: `Great job completing the "${completedLesson.title}" lesson! What did you learn? Would you like to talk more about it?`,
+      timestamp: Date.now(),
+      name: 'Sunny',
+      isLoading: false
     }
     
     setMessages(prev => [...prev, lessonResponse])
@@ -80,8 +102,11 @@ export default function Home() {
       setIsNameSet(true)
       setMessages([
         {
-          type: "assistant",
+          type: "assistant" as const,
           content: `Hi ${name}! I'm Sunny! How are you feeling today?`,
+          timestamp: Date.now(),
+          id: `assistant-${Date.now()}`,
+          name: 'Sunny'
         },
       ])
     }
@@ -89,193 +114,166 @@ export default function Home() {
 
   const handleEmotionSelect = (emotion: string) => {
     setSelectedEmotion(emotion)
-    let response = ""
-
-    switch (emotion) {
-      case "happy":
-        response = `You're feeling happy? That's wonderful, ${name}! What would you like to learn about today?`
-        break
-      case "sad":
-        response = `Feeling a bit sad? That's okay, ${name}. Learning something new might cheer you up! What are you curious about?`
-        break
-      case "excited":
-        response = `Wow! You're super excited! That's the perfect energy for learning something amazing! What would you like to explore?`
-        break
-      case "confused":
-        response = `Feeling confused? Don't worry, ${name}! I'm here to help make things clearer. What's on your mind?`
-        break
-    }
-
-    setMessages([
-      ...messages,
+    
+    // Add a welcome message from Sunny
+    const welcomeMessages = {
+      happy: "I'm so happy you're here! What would you like to talk about today? 😊",
+      sad: "I'm here to help cheer you up! What's on your mind? 🌈",
+      excited: "Yay! I'm excited to chat with you! What's new? 🎉",
+      curious: "I love curious minds! What would you like to learn about today? 🧐",
+      silly: "Let's get silly! What's the funniest thing you can think of? 🤪"
+    } as const;
+    
+    setMessages(prev => [
+      ...prev,
       {
-        type: "assistant",
-        content: response,
-      },
+        type: 'assistant' as const,
+        content: welcomeMessages[emotion as keyof typeof welcomeMessages] || welcomeMessages.happy,
+        timestamp: Date.now(),
+        id: `assistant-${Date.now()}`,
+        name: 'Sunny'
+      }
     ])
   }
 
-  const handleTopicSelect = async (topic: string) => {
-    let prompt = ""
-    let recommendLesson = false
-    let lessonId = ""
+  // Handle topic selection
+  const handleTopicSelect = (topic: 'math' | 'ideas' | 'robots' | 'space') => {
+    const topicMessages = {
+      math: `Can you help me with some math problems? I'm learning about addition and subtraction.`,
+      ideas: `I need some fun project ideas! What can I build with things around the house?`,
+      robots: `Tell me about robots! How do they work and what can they do?`,
+      space: `I want to learn about space! What's the most interesting planet?`,
+    } as const;
 
-    switch (topic) {
-      case "math":
-        prompt = "Tell me something fun about math patterns!"
-        recommendLesson = true
-        lessonId = "math-patterns-001"
-        break
-      case "ideas":
-        prompt = "I want to learn about a cool new idea!"
-        break
-      case "robots":
-        prompt = "Tell me something interesting about robots!"
-        recommendLesson = true
-        lessonId = "robots-intro-001"
-        break
-      case "space":
-        prompt = "Tell me something cool about space!"
-        recommendLesson = true
-        lessonId = "space-planets-001"
-        break
-    }
-
-    setQuestion(prompt)
-    await handleSendMessage(prompt)
+    const recommendLesson = topic !== 'ideas';
+    const lessonId = {
+      math: 'math-patterns-001',
+      robots: 'robots-intro-001',
+      space: 'space-planets-001',
+      ideas: ''
+    }[topic];
     
-    // After sending the topic message, recommend a relevant lesson if available
-    if (recommendLesson) {
-      setTimeout(() => {
-        const lessonRecommendation = {
-          type: "assistant",
-          content: `Would you like to try a fun lesson about this topic? I have a great one ready for you! Just click the lesson card or type "start lesson".`
-        }
-        
-        setMessages(prev => [...prev, lessonRecommendation])
-        
-        // Auto-scroll to the bottom of the chat
-        const chatContainer = document.querySelector('.custom-scrollbar')
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight
-        }
-      }, 2000) // Delay the recommendation slightly to feel more natural
+    const message = topicMessages[topic] || topicMessages.ideas;
+    setQuestion(message);
+    
+    if (recommendLesson && lessonId) {
+      // Store the recommended lesson in localStorage
+      const lessonData = {
+        id: lessonId,
+        title: `Recommended Lesson: ${topic.charAt(0).toUpperCase() + topic.slice(1)}`,
+        completedAt: new Date().toISOString()
+      };
+      localStorage.setItem('lastCompletedLesson', JSON.stringify(lessonData));
+      setCompletedLesson(lessonData);
+    }
+    
+    // Auto-send the message if there's content
+    if (message && !isLoading) {
+      handleSendMessage();
     }
   }
 
-  const handleSendMessage = async (messageText: string = question) => {
-    if (!messageText.trim()) return
+  // Handle sending a message
+  const handleSendMessage = useCallback(async () => {
+    if (!question.trim()) return;
 
-    const newMessage = {
-      type: "user",
-      content: messageText,
-    }
+    const userMessage: UserMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      role: 'user',
+      content: question,
+      name: name || 'User',
+      timestamp: Date.now(),
+    };
 
-    setMessages([...messages, newMessage])
-    setQuestion("")
-    setIsLoading(true)
+    setMessages(prev => [...prev, userMessage]);
+    setQuestion('');
+    setIsLoading(true);
 
     try {
-      // Check if the message is about starting a lesson
-      const lowerMessage = messageText.toLowerCase()
-      if (lowerMessage.includes("start lesson") || 
-          lowerMessage.includes("try lesson") || 
-          lowerMessage.includes("do lesson")) {
-        
-        // Check which topic they might be interested in based on recent conversation
-        let lessonId = "math-patterns-001" // Default to math patterns
-        
-        // Look at recent messages to determine the topic
-        const recentMessages = messages.slice(-5)
-        const recentText = recentMessages.map(msg => msg.content.toLowerCase()).join(" ")
-        
-        if (recentText.includes("robot")) {
-          lessonId = "robots-intro-001"
-          
-          setMessages(prev => [
-            ...prev,
-            {
-              type: "assistant",
-              content: "Great! Let's start the robots lesson. I'll take you there now!",
-            },
-          ])
-          
-          // Short delay before redirecting to the lesson
-          setTimeout(() => {
-            window.location.href = `/lesson/${lessonId}`
-          }, 1500)
-          
-        } else if (recentText.includes("space") || recentText.includes("planet")) {
-          lessonId = "space-planets-001"
+      const response = await generateSunnyResponse({
+        prompt: question,
+        name: name || 'Friend',
+        conversationHistory: messages as SunnyChatMessage[],
+      });
 
-          setMessages(prev => [
-            ...prev,
-            {
-              type: "assistant",
-              content: "Awesome! Let's start the space lesson. I'll take you there now!",
-            },
-          ])
+      const aiMessage: AssistantMessage = {
+        id: Date.now().toString(),
+        type: 'assistant',
+        role: 'assistant',
+        content: response.content,
+        name: 'Sunny',
+        timestamp: Date.now(),
+      };
 
-          // Short delay before redirecting to the lesson
-          setTimeout(() => {
-            window.location.href = `/lesson/${lessonId}`
-          }, 1500)
-
-        } else {
-          // Default to math patterns lesson
-          setMessages(prev => [
-            ...prev,
-            {
-              type: "assistant",
-              content: "Awesome! Let's start the math patterns lesson. I'll take you there now!",
-            },
-          ])
-          
-          // Short delay before redirecting to the lesson
-          setTimeout(() => {
-            window.location.href = `/lesson/${lessonId}`
-          }, 1500)
-        }
-        
-        setIsLoading(false)
-        return
-      }
+      setMessages(prev => [...prev, aiMessage]);
       
-      // For regular messages, proceed with the normal flow
-      const response = await generateSunnyResponse(messageText, name)
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "assistant",
-          content: response,
-        },
-      ])
-
-      // Increment reward counter and show reward every 5-6 messages
-      const newCount = rewardCount + 1
-      setRewardCount(newCount)
-
-      if (newCount % 5 === 0) {
-        setShowReward(true)
-        setTimeout(() => setShowReward(false), 3000)
+      // Speak the AI's response if voice is enabled
+      if (isVoiceEnabled && response.content) {
+        speakMessage(response.content);
       }
     } catch (error) {
-      console.error("Error getting response:", error)
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "assistant",
-          content: "Oops! Something went wrong. Let's try again!",
-        },
-      ])
+      console.error('Error generating response:', error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, [question, name, messages, isVoiceEnabled, speakMessage]);
+
+  // Handle text-to-speech for AI messages
+  const speakMessage = useCallback((text: string) => {
+    if (!isVoiceEnabled || typeof window === 'undefined') return;
+
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang === 'en-US') || null;
+      
+      if (voice) {
+        utterance.voice = voice;
+      }
+      
+      setIsSpeaking(true);
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('Error with speech synthesis:', error);
+      setIsSpeaking(false);
+    }
+  }, [isVoiceEnabled]);
+
+  // Handle speech recognition result
+  const handleTranscript = useCallback((text: string) => {
+    setQuestion(text);
+  }, []);
+
+  // Toggle voice input
+  const toggleVoiceInput = useCallback(() => {
+    if (isListening) {
+      window.speechSynthesis.cancel();
+      setIsListening(false);
+    } else {
+      setIsListening(true);
+    }
+  }, [isListening]);
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedQuestion = question.trim();
+    if (trimmedQuestion && !isLoading) {
+      handleSendMessage();
+    }
+  };
 
   return (
-    <main className="min-h-screen relative overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      {/* Onboarding Flow */}
+      {!isOnboardingComplete && <OnboardingFlow />}
+      
       {/* Background Image - Higher saturation */}
       <div className="fixed inset-0 -z-10">
         <Image 
@@ -417,13 +415,13 @@ export default function Home() {
                   />
                   <div className="absolute right-2 top-2">
                     <button 
-                      onClick={handleNameSubmit} 
-                      className="bg-green-400 hover:bg-green-500 text-green-800 rounded-full p-3 border-4 border-green-500 shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
-                      disabled={!name.trim()}
+                      onClick={handleNameSubmit}
+                      aria-label="Submit name"
+                      className="bg-yellow-400 hover:bg-yellow-500 text-yellow-800 rounded-full p-2 border-4 border-yellow-500 shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14"/>
-                        <path d="m12 5 7 7-7 7"/>
+                        <path d="m22 2-7 20-4-9-9-4Z" />
+                        <path d="M22 2 11 13" />
                       </svg>
                     </button>
                   </div>
@@ -480,7 +478,19 @@ export default function Home() {
               <div className="space-y-6 pb-2">
                 {!selectedEmotion ? (
                   <div className={`${clayCard} border-yellow-300 bg-yellow-100 p-6 transform rotate-1`}>
-                    <div className="flex items-start space-x-4">
+                    <div className="flex items-center space-x-4">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-full"
+                        onClick={() => {
+                          localStorage.removeItem('sunny-onboarding-complete');
+                          window.location.reload();
+                        }}
+                        title="Reset Onboarding"
+                      >
+                        <Settings className="h-5 w-5" />
+                      </Button>
                       <div className="relative w-16 h-16 animate-pulse-slow">
                         <Image src="/sun.png" alt="Sunny" fill className="object-contain drop-shadow-md" />
                       </div>
@@ -496,68 +506,30 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  <>
-                    {messages.map((msg, index) => (
-                      <div 
-                        key={index} 
-                        className={`${clayCard} ${msg.type === "user" ? 
-                          "border-blue-400 bg-blue-200 transform -rotate-1" : 
-                          "border-yellow-400 bg-yellow-100 transform rotate-1"} 
-                        p-6`}
-                      >
-                        <div className="flex items-start space-x-4">
-                          <div className="relative w-16 h-16">
-                            {msg.type === "user" ? (
-                              <div className="w-16 h-16 rounded-full border-4 border-blue-500 overflow-hidden shadow-lg">
-                                <Image 
-                                  src="/placeholder-user.jpg" 
-                                  alt={name} 
-                                  width={64} 
-                                  height={64} 
-                                  className="object-cover w-full h-full" 
-                                />
-                              </div>
-                            ) : (
-                              <div className="relative w-16 h-16 animate-pulse-slow">
-                                <Image src="/sun.png" alt="Sunny" fill className="object-contain drop-shadow-md" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-xl font-bold ${msg.type === "user" ? "text-blue-800" : "text-yellow-800"} mb-2`}>
-                              {msg.type === "user" ? name : "Sunny"}
-                            </p>
-                            <div className="prose">
-                              <p className={`text-lg ${msg.type === "user" ? "text-blue-800" : "text-yellow-800"}`}>
-                                {msg.content}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {isLoading && (
-                      <div className={`${clayCard} border-yellow-300 bg-yellow-100 p-6 transform rotate-1`}>
-                        <div className="flex items-start space-x-4">
-                          <div className="relative w-16 h-16">
-                            <Image src="/sun.png" alt="Sunny" fill className="object-contain drop-shadow-md animate-pulse-slow" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xl font-bold text-yellow-800 mb-2">Sunny</p>
-                            <div className="flex items-center space-x-3 text-yellow-800">
-                              <div className="flex space-x-1">
-                                <span className="h-4 w-4 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                                <span className="h-4 w-4 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
-                                <span className="h-4 w-4 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: "600ms" }}></span>
-                              </div>
-                              <span className="text-lg font-medium">Sunny is thinking...</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    <AnimatePresence>
+                      {messages.map((message, index) => (
+                        <motion.div
+                          key={message.id || index}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, x: message.type === 'user' ? 50 : -50 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                          className={message.type === 'assistant' ? 'pr-8' : 'pl-8'}
+                        >
+                          <ChatMessage
+                            id={message.id}
+                            type={message.type}
+                            content={message.content}
+                            name={message.name}
+                            timestamp={message.timestamp}
+                            isLoading={false}
+                            className=""
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
                 )}
               </div>
               
@@ -684,33 +656,95 @@ export default function Home() {
             
             {/* Input Area - Clay Style */}
             {selectedEmotion && (
-              <div className={`${clayCard} border-yellow-400 bg-yellow-200 p-4 transform -rotate-1`}>
-                <div className="flex space-x-4">
-                  <input
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Type your message for Sunny..."
-                    className={`${clayInput} flex-1 text-lg`}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  />
-                  <button
-                    onClick={() => handleSendMessage()}
-                    disabled={isLoading}
-                    className="bg-green-400 hover:bg-green-500 text-green-800 rounded-full p-4 border-4 border-green-500 shadow-lg hover:shadow-xl transition-all transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Send message"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m22 2-7 20-4-9-9-4Z" />
-                      <path d="M22 2 11 13" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="text-base font-medium text-yellow-800 mt-3 px-2 flex items-center">
-                  <div className="relative w-6 h-6 mr-2">
-                    <Image src="/sun.png" alt="Sunny" fill className="object-contain" />
+              <div className={`${clayCard} border-yellow-400 bg-yellow-100 p-6 transform -rotate-1`}>
+                <form onSubmit={handleSubmit} className="w-full">
+                  <div className="flex gap-3 w-full items-stretch">
+                    <div className="flex items-center space-x-2 w-full">
+                      <div className="relative flex-1">
+                        <Input
+                          type="text"
+                          value={question}
+                          onChange={(e) => setQuestion(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                          placeholder="Ask me anything..."
+                          className={`${clayInput} pr-16`}
+                          disabled={isLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={toggleVoiceInput}
+                          className={cn(
+                            "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors",
+                            isListening ? "bg-red-100 text-red-600" : "text-gray-500 hover:bg-gray-100"
+                          )}
+                          aria-label={isListening ? "Stop listening" : "Start voice input"}
+                        >
+                          {isListening ? (
+                            <MicOff className="h-5 w-5" />
+                          ) : (
+                            <Mic className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          onClick={handleSendMessage} 
+                          disabled={isLoading || !question.trim()}
+                          className={`bg-yellow-400 hover:bg-yellow-500 text-gray-900 ${clayButton}`}
+                        >
+                          {isLoading ? 'Thinking...' : 'Send'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={isVoiceEnabled ? "default" : "outline"}
+                          size="icon"
+                          onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                          className={cn("rounded-full", clayShadow, {
+                            "bg-blue-500 text-white hover:bg-blue-600": isVoiceEnabled,
+                            "bg-white text-gray-700 hover:bg-gray-100": !isVoiceEnabled
+                          })}
+                          aria-label={isVoiceEnabled ? "Disable voice" : "Enable voice"}
+                        >
+                          {isVoiceEnabled ? (
+                            <Volume2 className="h-5 w-5" />
+                          ) : (
+                            <VolumeX className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!question.trim() || isLoading}
+                      className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center 
+                        bg-gradient-to-br from-green-400 to-green-500 text-white 
+                        border-4 border-green-600 shadow-lg hover:shadow-xl 
+                        transition-all transform hover:scale-105 active:scale-95 
+                        disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                        focus:outline-none focus:ring-4 focus:ring-green-200 focus:ring-opacity-50`}
+                      aria-label="Send message"
+                      style={{
+                        boxShadow: '4px 4px 0 rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        width="24" 
+                        height="24" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="3" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        className={`transition-transform duration-200 ${!question.trim() || isLoading ? 'opacity-70' : 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5'}`}
+                      >
+                        <path d="m22 2-7 20-4-9-9-4Z" />
+                        <path d="M22 2 11 13" />
+                      </svg>
+                    </button>
                   </div>
-                  Ask me anything! I love to help with homework and answer questions!
-                </div>
+                </form>
               </div>
             )}
           </div>
