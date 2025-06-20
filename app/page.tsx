@@ -177,19 +177,23 @@ export default function Home() {
     
     // Auto-send the message if there's content
     if (message && !isLoading) {
-      handleSendMessage();
+      handleSendMessage(undefined, message);
     }
   }
 
   // Handle sending a message
-  const handleSendMessage = useCallback(async () => {
-    if (!question.trim()) return;
+  const handleSendMessage = useCallback(async (
+    mode?: 'summary' | 'flashcards',
+    customText?: string
+  ) => {
+    const text = customText ?? question
+    if (!text.trim()) return;
 
     const userMessage: UserMessage = {
       id: `user-${Date.now()}`,
       type: 'user',
       role: 'user',
-      content: question,
+      content: text,
       name: name || 'User',
       timestamp: Date.now(),
     };
@@ -206,7 +210,9 @@ export default function Home() {
       console.error('Failed to save user message');
     }
     setIsLoading(true);
-    setQuestion('');
+    if (!customText) {
+      setQuestion('');
+    }
 
     try {
       const studentProfile: StudentProfile = {
@@ -221,7 +227,11 @@ export default function Home() {
         (msg): msg is UserMessage | AssistantMessage => msg.type === 'user' || msg.type === 'assistant'
       );
 
-      const stream = await generateSunnyResponse(apiMessages, studentProfile);
+   const stream = await generateSunnyResponse(
+      apiMessages,
+      studentProfile,
+      mode ?? 'chat'
+    );
       
       let fullResponse = '';
       const assistantId = `assistant-${Date.now()}`;
@@ -256,19 +266,54 @@ export default function Home() {
       }
 
       if (fullResponse) {
-        setLastAssistantMessageContent(fullResponse);
-        if (isVoiceModeActive) {
-          setTextToSpeak(fullResponse);
+        let finalContent: any = fullResponse
+        let finalType: Message['type'] = 'assistant'
+        if (mode === 'flashcards') {
+          try {
+            const parsed = JSON.parse(fullResponse)
+            if (Array.isArray(parsed)) {
+              finalContent = parsed
+              finalType = 'flashcards'
+            }
+          } catch {
+            // fallback to string
+          }
+        }
+
+        setLastAssistantMessageContent(
+          typeof finalContent === 'string' ? finalContent : ''
+        )
+        if (isVoiceModeActive && typeof finalContent === 'string') {
+          setTextToSpeak(finalContent)
+        }
+        const savedMessage: Message = {
+          id: assistantId,
+          type: finalType,
+          role: 'assistant',
+          content:
+            typeof finalContent === 'string'
+              ? finalContent
+              : (finalContent as any),
+          timestamp: Date.now(),
+          name: 'Sunny'
         }
         try {
+          const apiMessage = {
+            ...savedMessage,
+            content:
+              typeof finalContent === 'string'
+                ? finalContent
+                : JSON.stringify(finalContent)
+          }
           await fetch('/api/user/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: { id: assistantId, type: 'assistant', role: 'assistant', content: fullResponse, timestamp: Date.now(), name: 'Sunny' } })
-          });
+            body: JSON.stringify({ message: apiMessage })
+          })
         } catch (e) {
-          console.error('Failed to save assistant message');
+          console.error('Failed to save assistant message')
         }
+        setMessages(prev => prev.map(m => (m.id === assistantId ? savedMessage : m)))
       }
 
     } catch (error) {
@@ -328,6 +373,18 @@ export default function Home() {
     const trimmedQuestion = question.trim();
     if (trimmedQuestion && !isLoading) {
       handleSendMessage();
+    }
+  };
+
+  const requestSummary = () => {
+    if (!isLoading) {
+      handleSendMessage('summary', 'Could you summarize this for me?');
+    }
+  };
+
+  const requestFlashcards = () => {
+    if (!isLoading) {
+      handleSendMessage('flashcards', 'Can I have some flashcards?');
     }
   };
 
@@ -783,6 +840,14 @@ export default function Home() {
                       ) : (
                         <VolumeX className="h-6 w-6" />
                       )}
+                    </Button>
+                  </div>
+                  <div className="flex gap-3 mt-3">
+                    <Button type="button" variant="outline" onClick={requestSummary}>
+                      Get Summary
+                    </Button>
+                    <Button type="button" variant="outline" onClick={requestFlashcards}>
+                      Flashcards
                     </Button>
                   </div>
                 </form>
