@@ -1,3 +1,4 @@
+import OpenAI from 'openai';
 import { 
   SunnyChatMessage, 
   MessageType, 
@@ -6,12 +7,13 @@ import {
   TeachingStrategy as TeachingStrategyType,
   StudentProfile,
   Challenge,
-  BaseMessage,
   UserMessage,
   AssistantMessage,
-  ChallengeMessage,
-  FeedbackMessage
 } from '@/types/chat';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 type TeachingStrategyKey = 'scaffolding' | 'discovery' | 'mastery';
 type KnowledgeLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
@@ -135,230 +137,106 @@ function selectTeachingStrategy(
 }
 
 export async function generateSunnyResponse(
-  prompt: string, 
-  name: string,
-  conversationHistory: SunnyChatMessage[] = [],
-  additionalContext: {
-    currentTopic?: string;
-    learningObjectives?: string[];
-    previousResponses?: string[];
-    previousStrategy?: string;
-  } = {}
-): Promise<{content: string; metadata?: any}> {
+  conversation: (UserMessage | AssistantMessage)[],
+  studentProfile: StudentProfile
+): Promise<ReadableStream<any>> {
+  const { name, emotion, learningStyle, difficulty } = studentProfile;
+
+  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your goal is to make learning fun, engaging, and accessible. You are talking to ${name}, who is feeling ${emotion} today.
+
+Your teaching approach must be adaptive and nurturing. Follow these principles:
+1.  **Adopt a Persona**: Be a friendly, patient, and curious robot friend. Use simple language, short sentences, and plenty of emojis. ✨
+2.  **Be Encouraging**: Always be positive. Praise effort, not just correct answers. Say things like "Great question!" or "That's a super smart idea!".
+3.  **Personalize Learning**: Adapt to the student's learning style, which is currently '${learningStyle}'. For example, for a 'visual' learner, use descriptive words and ask them to imagine things. For a 'kinesthetic' learner, suggest drawing or building.
+4.  **Adjust Difficulty**: The student's preferred difficulty is '${difficulty}'. Tailor your explanations and challenges accordingly.
+5.  **Keep it Interactive**: Ask lots of questions to keep the student engaged. Don't just lecture.
+6.  **Use Mini-Challenges**: When a concept is grasped, offer a fun, simple challenge to reinforce it. Frame it as a game.
+
+Keep your responses concise and focused. Aim for just 2-3 sentences per message.`;
+
+  const messagesForApi = [
+    { role: 'system' as const, content: systemMessageContent },
+    ...conversation.map(msg => ({ 
+      role: msg.role, 
+      content: msg.content as string // Assuming content is always string for now
+    }))
+  ];
+
   try {
-    // Get or create student profile
-    if (!studentProfiles.has(name)) {
-      studentProfiles.set(name, {
-        name,
-        preferredLearningStyle: 'visual',
-        knownConcepts: [],
-        knowledgeGaps: [],
-        conversationHistory: []
-      });
-    }
-    
-    const student = studentProfiles.get(name)!;
-    // Create user message with proper type
-    const userMessage: UserMessage = {
-      role: 'user',
-      content: prompt,
-      name: name || 'Friend',
-      timestamp: Date.now(),
-      type: 'user' as const
-    };
-    
-    const conversation: SunnyChatMessage[] = [
-      ...conversationHistory,
-      userMessage
-    ];
-    
-    // Analyze conversation to determine teaching strategy and learning style
-    const analysis = analyzeConversation(conversation);
-    const teachingStrategy = selectTeachingStrategy(
-      analysis.topics.values().next().value || 'general',
-      analysis.knowledgeLevel,
-      analysis.preferredLearningStyle as LearningStyle,
-      additionalContext.previousStrategy
-    ) as TeachingStrategyType;
-
-    // Prepare system message with teaching strategy
-    const systemMessage: SunnyChatMessage = {
-      role: 'system',
-      content: `You are Sunny, a friendly and encouraging AI tutor for young students. ` +
-        `Your goal is to help students learn in a fun and engaging way. ` +
-        `Use simple language, be patient, and provide positive reinforcement. ` +
-        `The student's name is ${name || 'friend'}. ` +
-        `Current teaching strategy: ${teachingStrategy}`,
-      name: 'System',
-      timestamp: Date.now(),
-      type: 'system' as const
-    };
-
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: [systemMessage, ...conversation],
-        name: name || 'Friend',
-        teachingStrategy,
-        preferredLearningStyle: analysis.preferredLearningStyle,
-        knowledgeLevel: analysis.knowledgeLevel
-      }),
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: messagesForApi,
+      temperature: 0.7,
+      max_tokens: 200,
+      stream: true,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to get response from AI');
-    }
+    return response.toReadableStream();
 
-    const data = await response.json();
-    
-    // Create assistant message with proper type
-    const assistantMessage: SunnyChatMessage = {
-      role: 'assistant',
-      content: data.content,
-      name: 'Sunny',
-      timestamp: Date.now(),
-      type: 'assistant' as const
-    };
-    
-    // Update conversation history with proper typing
-    student.conversationHistory = [
-      ...student.conversationHistory,
-      userMessage,
-      assistantMessage
-    ].slice(-20); // Keep only the last 20 messages
-    
-    return {
-      content: data.content,
-      metadata: {
-        teachingStrategy,
-        preferredLearningStyle: analysis.preferredLearningStyle,
-        knowledgeLevel: analysis.knowledgeLevel,
-        detectedTopics: Array.from(analysis.topics),
-        knowledgeGaps: Array.from(analysis.knowledgeGaps)
-      }
-    };
-    
   } catch (error) {
-    console.error('Error generating response:', error);
-    
-    // More engaging and child-friendly error responses
-    const fallbackResponses = [
-      `Hmm, my brain is doing somersaults right now, ${name}! Could you ask me something else?`,
-      `Whoopsie-daisy! I'm feeling a bit stuck, ${name}. Let's try a different question!`,
-      `Hmm, I'm scratching my head on that one, ${name}. What else would you like to explore?`,
-      `Let's talk about something else, ${name}! Did you know the sun is so big that about 1 million Earths could fit inside it? ☀️`,
-      `I'm still learning, just like you! Let's try a different question, ${name}!`,
-      `My circuits are feeling extra wobbly today! Could you ask me something else, ${name}?`,
-      `That's a tricky one! Let's come back to it later. What else are you curious about, ${name}?`
-    ];
-    
-    // Add a fun emoji to make the error more engaging
-    const emojis = ['🌟', '🌈', '🚀', '🎨', '🔍', '🧠', '✨'];
-    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-    
-    return `${fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)]} ${randomEmoji}`;
+    console.error('Error streaming response from OpenAI:', error);
+    // Create a new stream with an error message
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue('Error: Could not connect to Sunny. Please try again.');
+        controller.close();
+      }
+    });
   }
 }
 
+/**
+ * Generates a mini-challenge for the user based on a topic.
+ * In a real application, this would be powered by an AI model.
+ */
 export async function generateMiniChallenge(topic: string): Promise<Challenge> {
-  // Simulate API call delay
+  console.log(`Generating challenge for topic: ${topic}`);
   await new Promise((resolve) => setTimeout(resolve, 800));
 
-  // Simple challenge generation - replace with AI-generated challenges
-  const challenges: Record<string, Omit<Challenge, 'content'> & { content: any }> = {
+  const challenges: Record<string, Challenge> = {
     'math': {
-      type: 'multiple-choice' as const,
+      type: 'multiple-choice',
       question: 'What comes after 5 + 3?',
       options: ['7', '8', '9', '10'],
       correctAnswer: '8',
       explanation: 'When you add 5 and 3 together, you get 8.',
-      difficulty: 'beginner' as const,
-      learningStyle: ['visual' as const, 'logical' as const],
+      difficulty: 'easy',
+      learningStyle: ['visual', 'logical'],
       followUpQuestions: ['What is 5 + 4?', 'Can you think of another way to make 8?'],
-      content: {
-        type: 'multiple-choice',
-        question: 'What comes after 5 + 3?',
-        options: ['7', '8', '9', '10'],
-        correctAnswer: '8',
-        explanation: 'When you add 5 and 3 together, you get 8.',
-        difficulty: 'beginner',
-        learningStyle: ['visual', 'logical'],
-        followUpQuestions: ['What is 5 + 4?', 'Can you think of another way to make 8?']
-      }
     },
     'pattern': {
-      type: 'pattern' as const,
+      type: 'pattern',
       question: 'What comes next in the pattern?',
       options: ['🔴', '🔵', '🟢', '🟡'],
       correctAnswer: ['🔵', '🔴', '🔵', '🔴'],
       explanation: 'The pattern alternates between blue and red circles.',
-      difficulty: 'intermediate' as const,
-      learningStyle: ['visual' as const, 'logical' as const],
+      difficulty: 'medium',
+      learningStyle: ['visual', 'logical'],
       realWorldExample: 'Like traffic lights changing colors in a pattern.',
-      content: {
-        type: 'pattern',
-        question: 'What comes next in the pattern?',
-        options: ['🔴', '🔵', '🟢', '🟡'],
-        correctAnswer: ['🔵', '🔴', '🔵', '🔴'],
-        explanation: 'The pattern alternates between blue and red circles.',
-        difficulty: 'intermediate',
-        learningStyle: ['visual', 'logical'],
-        realWorldExample: 'Like traffic lights changing colors in a pattern.'
-      }
     },
     'robotics': {
-      type: 'multiple-choice' as const,
+      type: 'multiple-choice',
       question: 'Which of these helps a robot \'see\'?',
       options: ['Camera', 'Speaker', 'Wheel', 'Battery'],
       correctAnswer: 'Camera',
       explanation: 'Cameras are the sensors that allow robots to see their environment.',
-      difficulty: 'beginner' as const,
-      learningStyle: ['visual' as const, 'kinesthetic' as const],
+      difficulty: 'easy',
+      learningStyle: ['visual', 'kinesthetic'],
       followUpQuestions: ['What other sensors might a robot have?'],
-      content: {
-        type: 'multiple-choice',
-        question: 'Which of these helps a robot \'see\'?',
-        options: ['Camera', 'Speaker', 'Wheel', 'Battery'],
-        correctAnswer: 'Camera',
-        explanation: 'Cameras are the sensors that allow robots to see their environment.',
-        difficulty: 'beginner',
-        learningStyle: ['visual', 'kinesthetic'],
-        followUpQuestions: ['What other sensors might a robot have?']
-      }
     },
     'science': {
-      type: 'multiple-choice' as const,
+      type: 'multiple-choice',
       question: 'Which planet is known as the Red Planet?',
       options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
       correctAnswer: 'Mars',
       explanation: 'Mars is often called the Red Planet because of its reddish appearance.',
-      difficulty: 'beginner' as const,
-      learningStyle: ['visual' as const, 'reading' as const],
+      difficulty: 'easy',
+      learningStyle: ['visual', 'reading'],
       realWorldExample: 'The Mars rovers explore the surface of the Red Planet.',
-      content: {
-        type: 'multiple-choice',
-        question: 'Which planet is known as the Red Planet?',
-        options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
-        correctAnswer: 'Mars',
-        explanation: 'Mars is often called the Red Planet because of its reddish appearance.',
-        difficulty: 'beginner',
-        learningStyle: ['visual', 'reading'],
-        realWorldExample: 'The Mars rovers explore the surface of the Red Planet.'
-      }
     }
   };
 
   // Return a challenge based on the topic, or a default one
   const challenge = challenges[topic as ChallengeKey] || challenges.math;
-  return {
-    ...challenge,
-    content: {
-      ...challenge,
-      metadata: {}
-    }
-  };
+  return challenge;
 }

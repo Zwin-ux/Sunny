@@ -5,13 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generateSunnyResponse } from '@/lib/sunny-ai';
-import { Message, SunnyChatMessage } from '@/types/chat';
+import { Message, UserMessage, AssistantMessage } from '@/types/chat';
 import EmotionSelector from '@/components/emotion-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Star, Award, Heart, Lightbulb, Bot, Rocket, BookOpen, BookMarked, BookCheck, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import { Sparkles, Star, Award, Heart, Lightbulb, Bot, Rocket, BookOpen, BookMarked, BookCheck, Volume2, VolumeX, Mic, MicOff, Settings } from 'lucide-react';
 import TopicBubbles from "@/components/topic-bubbles";
 import ChatMessage from "@/components/chat-message";
 import RewardBadge from "@/components/reward-badge";
@@ -42,9 +42,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false) 
   const [rewardCount, setRewardCount] = useState<number>(0) 
   const [showReward, setShowReward] = useState<boolean>(false)
-  const [isListening, setIsListening] = useState<boolean>(false)
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(false)
+  const [isVoiceModeActive, setIsVoiceModeActive] = useState<boolean>(false);
+  const [textToSpeak, setTextToSpeak] = useState<string>('');
+  const [lastAssistantMessageContent, setLastAssistantMessageContent] = useState<string>('');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [completedLesson, setCompletedLesson] = useState<{
     id: string;
     title: string;
@@ -77,10 +78,11 @@ export default function Home() {
     if (!completedLesson) return
     
     // Add Sunny's response about the completed lesson
-    const lessonResponse: Message = {
+    const lessonResponse: AssistantMessage = {
       id: `assistant-${Date.now()}`,
-      type: 'assistant' as const,
-      content: `Great job completing the "${completedLesson.title}" lesson! What did you learn? Would you like to talk more about it?`,
+      type: 'assistant',
+      role: 'assistant',
+      content: `Wow, you completed the "${completedLesson.title}" lesson! That's amazing! What did you think of it?`,
       timestamp: Date.now(),
       name: 'Sunny',
       isLoading: false
@@ -100,14 +102,17 @@ export default function Home() {
   const handleNameSubmit = () => {
     if (name.trim()) {
       setIsNameSet(true)
+      const welcomeMessage: AssistantMessage = {
+        id: `assistant-${Date.now()}`,
+        type: 'assistant',
+        role: 'assistant',
+        content: `Hi ${name}! It's so nice to meet you. How are you feeling today?`,
+        timestamp: Date.now(),
+        name: 'Sunny'
+      }
+      
       setMessages([
-        {
-          type: "assistant" as const,
-          content: `Hi ${name}! I'm Sunny! How are you feeling today?`,
-          timestamp: Date.now(),
-          id: `assistant-${Date.now()}`,
-          name: 'Sunny'
-        },
+        welcomeMessage,
       ])
     }
   }
@@ -124,15 +129,18 @@ export default function Home() {
       silly: "Let's get silly! What's the funniest thing you can think of? 🤪"
     } as const;
     
+    const welcomeMessage: AssistantMessage = {
+      id: `assistant-${Date.now()}`,
+      type: 'assistant',
+      role: 'assistant',
+      content: welcomeMessages[emotion as keyof typeof welcomeMessages] || welcomeMessages.happy,
+      timestamp: Date.now(),
+      name: 'Sunny'
+    }
+    
     setMessages(prev => [
       ...prev,
-      {
-        type: 'assistant' as const,
-        content: welcomeMessages[emotion as keyof typeof welcomeMessages] || welcomeMessages.happy,
-        timestamp: Date.now(),
-        id: `assistant-${Date.now()}`,
-        name: 'Sunny'
-      }
+      welcomeMessage
     ])
   }
 
@@ -178,7 +186,7 @@ export default function Home() {
     if (!question.trim()) return;
 
     const userMessage: UserMessage = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       type: 'user',
       role: 'user',
       content: question,
@@ -186,42 +194,85 @@ export default function Home() {
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setQuestion('');
+    const newMessages: Message[] = [...messages, userMessage];
+    setMessages(newMessages);
     setIsLoading(true);
+    setQuestion('');
 
     try {
-      const response = await generateSunnyResponse({
-        prompt: question,
-        name: name || 'Friend',
-        conversationHistory: messages as SunnyChatMessage[],
-      });
+      const studentProfile: StudentProfile = {
+        name: name || 'User',
+        emotion: selectedEmotion || 'curious',
+        learningStyle: 'kinesthetic', // This should be dynamic
+        difficulty: 'easy', // This should be dynamic
+      };
 
-      const aiMessage: AssistantMessage = {
-        id: Date.now().toString(),
+      // Filter for messages compatible with the API
+      const apiMessages = newMessages.filter(
+        (msg): msg is UserMessage | AssistantMessage => msg.type === 'user' || msg.type === 'assistant'
+      );
+
+      const stream = await generateSunnyResponse(apiMessages, studentProfile);
+      
+      let fullResponse = '';
+      const assistantId = `assistant-${Date.now()}`;
+
+      // We are streaming a response, so create a placeholder message
+      // This needs to be a generic AssistantMessage because the stream might return
+      // a simple string, a Challenge, or Feedback.
+      const loadingMessage: Message = {
+        id: assistantId,
+        type: 'assistant', // Default to assistant, will be updated by stream
+        role: 'assistant',
+        content: '', // Start with empty content
+        name: 'Sunny',
+        timestamp: Date.now(),
+        isLoading: true,
+      };
+      setMessages(prev => [...prev, loadingMessage]);
+
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        const chunk = decoder.decode(value, { stream: !done });
+        fullResponse += chunk;
+
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantId ? { ...msg, content: fullResponse, isLoading: !done } : msg
+        ));
+      }
+
+      if (fullResponse) {
+        setLastAssistantMessageContent(fullResponse);
+        if (isVoiceModeActive) {
+          setTextToSpeak(fullResponse);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error getting response from Sunny:', error);
+      const errorMessage: AssistantMessage = {
+        id: `assistant-${Date.now()}-error`,
         type: 'assistant',
         role: 'assistant',
-        content: response.content,
+        content: "Oh dear, I'm having a little trouble thinking right now. Let's try that again in a moment!",
         name: 'Sunny',
         timestamp: Date.now(),
       };
-
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // Speak the AI's response if voice is enabled
-      if (isVoiceEnabled && response.content) {
-        speakMessage(response.content);
-      }
-    } catch (error) {
-      console.error('Error generating response:', error);
+      // Replace the loading message with an error message
+      setMessages(prev => [...prev.slice(0, -1), errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [question, name, messages, isVoiceEnabled, speakMessage]);
+  }, [messages, question, name, selectedEmotion, isVoiceModeActive]);
 
   // Handle text-to-speech for AI messages
   const speakMessage = useCallback((text: string) => {
-    if (!isVoiceEnabled || typeof window === 'undefined') return;
+    if (!isVoiceModeActive || typeof window === 'undefined') return;
 
     try {
       const utterance = new SpeechSynthesisUtterance(text);
@@ -232,33 +283,26 @@ export default function Home() {
         utterance.voice = voice;
       }
       
-      setIsSpeaking(true);
-      
       utterance.onend = () => {
-        setIsSpeaking(false);
+        setTextToSpeak('');
       };
 
       window.speechSynthesis.speak(utterance);
     } catch (error) {
       console.error('Error with speech synthesis:', error);
-      setIsSpeaking(false);
+      setTextToSpeak('');
     }
-  }, [isVoiceEnabled]);
+  }, [isVoiceModeActive]);
 
   // Handle speech recognition result
   const handleTranscript = useCallback((text: string) => {
-    setQuestion(text);
+    setQuestion(prev => prev + text);
   }, []);
 
   // Toggle voice input
   const toggleVoiceInput = useCallback(() => {
-    if (isListening) {
-      window.speechSynthesis.cancel();
-      setIsListening(false);
-    } else {
-      setIsListening(true);
-    }
-  }, [isListening]);
+    setIsVoiceModeActive(!isVoiceModeActive);
+  }, [isVoiceModeActive]);
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -517,15 +561,7 @@ export default function Home() {
                           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                           className={message.type === 'assistant' ? 'pr-8' : 'pl-8'}
                         >
-                          <ChatMessage
-                            id={message.id}
-                            type={message.type}
-                            content={message.content}
-                            name={message.name}
-                            timestamp={message.timestamp}
-                            isLoading={false}
-                            className=""
-                          />
+                          <ChatMessage {...message} />
                         </motion.div>
                       ))}
                     </AnimatePresence>
@@ -658,68 +694,37 @@ export default function Home() {
             {selectedEmotion && (
               <div className={`${clayCard} border-yellow-400 bg-yellow-100 p-6 transform -rotate-1`}>
                 <form onSubmit={handleSubmit} className="w-full">
-                  <div className="flex gap-3 w-full items-stretch">
-                    <div className="flex items-center space-x-2 w-full">
-                      <div className="relative flex-1">
-                        <Input
-                          type="text"
-                          value={question}
-                          onChange={(e) => setQuestion(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                          placeholder="Ask me anything..."
-                          className={`${clayInput} pr-16`}
-                          disabled={isLoading}
-                        />
-                        <button
-                          type="button"
-                          onClick={toggleVoiceInput}
-                          className={cn(
-                            "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors",
-                            isListening ? "bg-red-100 text-red-600" : "text-gray-500 hover:bg-gray-100"
-                          )}
-                          aria-label={isListening ? "Stop listening" : "Start voice input"}
-                        >
-                          {isListening ? (
-                            <MicOff className="h-5 w-5" />
-                          ) : (
-                            <Mic className="h-5 w-5" />
-                          )}
-                        </button>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          onClick={handleSendMessage} 
-                          disabled={isLoading || !question.trim()}
-                          className={`bg-yellow-400 hover:bg-yellow-500 text-gray-900 ${clayButton}`}
-                        >
-                          {isLoading ? 'Thinking...' : 'Send'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={isVoiceEnabled ? "default" : "outline"}
-                          size="icon"
-                          onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                          className={cn("rounded-full", clayShadow, {
-                            "bg-blue-500 text-white hover:bg-blue-600": isVoiceEnabled,
-                            "bg-white text-gray-700 hover:bg-gray-100": !isVoiceEnabled
-                          })}
-                          aria-label={isVoiceEnabled ? "Disable voice" : "Enable voice"}
-                        >
-                          {isVoiceEnabled ? (
-                            <Volume2 className="h-5 w-5" />
-                          ) : (
-                            <VolumeX className="h-5 w-5" />
-                          )}
-                        </Button>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-grow">
+                      <Input
+                        type="text"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        placeholder={isVoiceModeActive ? "Listening..." : "Type or use voice..."}
+                        className={`${clayInput} pr-28`}
+                        disabled={isLoading}
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                        {isVoiceModeActive && (
+                          <VoiceControls
+                            onTranscript={(transcript) => setQuestion(prev => prev + transcript)}
+                            onSpeak={(text) => setTextToSpeak(text)} 
+                            isSpeaking={!!textToSpeak} 
+                            textToSpeak={textToSpeak} 
+                            replayableContent={lastAssistantMessageContent}
+                            onError={setVoiceError}
+                          />
+                        )}
                       </div>
                     </div>
-                    <button
+
+                    <Button
                       type="submit"
                       disabled={!question.trim() || isLoading}
                       className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center 
                         bg-gradient-to-br from-green-400 to-green-500 text-white 
                         border-4 border-green-600 shadow-lg hover:shadow-xl 
-                        transition-all transform hover:scale-105 active:scale-95 
+                        transition-all duration-200 transform hover:scale-105 active:scale-95
                         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
                         focus:outline-none focus:ring-4 focus:ring-green-200 focus:ring-opacity-50`}
                       aria-label="Send message"
@@ -742,7 +747,25 @@ export default function Home() {
                         <path d="m22 2-7 20-4-9-9-4Z" />
                         <path d="M22 2 11 13" />
                       </svg>
-                    </button>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={isVoiceModeActive ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setIsVoiceModeActive(!isVoiceModeActive)}
+                      className={cn("rounded-full h-14 w-14", clayShadow, {
+                        "bg-blue-500 text-white hover:bg-blue-600": isVoiceModeActive,
+                        "bg-white text-gray-700 hover:bg-gray-100": !isVoiceModeActive
+                      })}
+                      aria-label={isVoiceModeActive ? "Disable voice mode" : "Enable voice mode"}
+                    >
+                      {isVoiceModeActive ? (
+                        <Volume2 className="h-6 w-6" />
+                      ) : (
+                        <VolumeX className="h-6 w-6" />
+                      )}
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -763,6 +786,6 @@ export default function Home() {
           </p>
         </div>
       </footer>
-    </main>
+    </div>
   )
 }

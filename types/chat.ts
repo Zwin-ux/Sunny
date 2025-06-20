@@ -1,13 +1,12 @@
 // Define MessageType separately to avoid circular dependencies
 export type MessageType = 'user' | 'assistant' | 'system' | 'challenge' | 'feedback';
 export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading' | 'logical';
-export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
+export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'beginner' | 'intermediate' | 'advanced';
 
 export type MessageContent = 
   | string 
-  | { content: string; metadata?: any }
-  | Challenge['content']
-  | FeedbackMessage['content'];
+  | Challenge
+  | FeedbackContent;
 
 export interface BaseMessage {
   id: string;
@@ -25,7 +24,7 @@ export interface UserMessage extends Omit<BaseMessage, 'type'> {
   content: string;
 }
 
-export interface AssistantMessage extends Omit<BaseMessage, 'type'> {
+export interface AssistantMessage extends Omit<BaseMessage, 'type' | 'content'> {
   type: 'assistant' | 'system';
   role: 'assistant' | 'system';
   content: string;
@@ -38,22 +37,12 @@ export interface AssistantMessage extends Omit<BaseMessage, 'type'> {
   };
 }
 
-export interface ChallengeContent {
-  type: 'multiple-choice' | 'pattern' | 'open-ended' | 'matching';
-  question: string;
-  options?: string[];
-  correctAnswer: string | string[];
-  explanation: string;
-  difficulty: DifficultyLevel;
-  learningStyle: LearningStyle[];
-  followUpQuestions?: string[];
-  realWorldExample?: string;
-}
+
 
 export interface ChallengeMessage extends Omit<BaseMessage, 'type' | 'content'> {
   type: 'challenge';
   role: 'assistant';
-  content: ChallengeContent;
+  content: Challenge;
 }
 
 export interface FeedbackContent {
@@ -71,17 +60,9 @@ export interface FeedbackMessage extends Omit<BaseMessage, 'type' | 'content'> {
 
 export type Message = UserMessage | AssistantMessage | ChallengeMessage | FeedbackMessage;
 
-export interface ChatMessageProps {
-  id: string;
-  type: MessageType;
-  content: MessageContent;
-  timestamp: number;
-  name: string;
+export type ChatMessageProps = Message & {
   className?: string;
-  isLoading?: boolean;
-  metadata?: any;
-  role?: 'user' | 'assistant' | 'system';
-}
+};
 
 export interface ChatContextType {
   messages: Message[];
@@ -113,10 +94,13 @@ export interface TeachingStrategy {
 
 export interface StudentProfile {
   name: string;
-  preferredLearningStyle: LearningStyle;
-  knownConcepts: string[];
-  knowledgeGaps: string[];
-  conversationHistory: SunnyChatMessage[];
+  emotion?: string;
+  learningStyle?: LearningStyle;
+  difficulty?: DifficultyLevel;
+  preferredLearningStyle?: LearningStyle;
+  knownConcepts?: string[];
+  knowledgeGaps?: string[];
+  conversationHistory?: SunnyChatMessage[];
   lastChallenge?: {
     type: string;
     topic: string;
