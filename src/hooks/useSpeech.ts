@@ -1,31 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-type SpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: (event: any) => void;
-  onerror: (event: SpeechRecognitionErrorEvent) => void;
-  onend: () => void;
-  onspeechend: (() => void) | null;
-};
 
-type SpeechRecognitionErrorEvent = {
-  error: string;
-  message: string;
-};
-
-// speechSynthesis is already defined in the global scope in TypeScript's DOM lib
-// We only need to declare the non-standard properties
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
-  }
-}
 
 export const useSpeech = (language = 'en-US') => {
   const [isListening, setIsListening] = useState(false);
