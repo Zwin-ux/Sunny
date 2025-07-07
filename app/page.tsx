@@ -1,477 +1,355 @@
-"use client"
+"use client";
 
-import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
+import { useState, useEffect, useRef, useCallback, Suspense, Dispatch, SetStateAction } from 'react';
+import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useChat, type Message as AIChatMessage } from 'ai/react';
+import dynamic from 'next/dynamic';
 
-import { Message, UserMessage, AssistantMessage, StudentProfile, ChallengeMessage, Challenge, UIMessage } from '@/types/chat';
-import EmotionSelector from '@/components/emotion-selector';
+// UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Star, Award, Heart, Lightbulb, Bot, Rocket, BookOpen, BookMarked, BookCheck, Volume2, VolumeX, Mic, MicOff, Settings } from 'lucide-react';
-import TopicBubbles from "@/components/topic-bubbles";
-import ChatMessage from "@/components/chat-message";
-import RewardBadge from "@/components/reward-badge";
-import SunnyCharacter from "@/components/sunny-character";
-import Link from "next/link";
-import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
-import { useOnboarding } from "@/contexts/OnboardingContext";
-import { VoiceControls } from "@/components/voice-controls";
+import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } from 'lucide-react';
+
+// Hooks
+import { useLearningChat } from '@/hooks/useLearningChat';
+import { useLearningSession } from '@/contexts/LearningSessionContext';
+
+// Utils
 import { cn } from "@/lib/utils";
 
-// CSS for claymation effects
-const clayShadow = "shadow-[6px_6px_0px_0px_rgba(0,0,0,0.15)]"
-const clayButton = `rounded-full py-3 px-6 font-bold text-lg transition-all duration-300 transform hover:scale-105 active:scale-95 ${clayShadow} hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.15)]`
-const clayCard = `bg-white rounded-3xl border-4 ${clayShadow} hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.15)] transition-all duration-300`
-const clayInput = `rounded-2xl border-4 border-purple-300 bg-white py-4 px-6 text-lg text-gray-800 placeholder-gray-500 
-  focus:outline-none focus:ring-4 focus:ring-yellow-200 focus:border-yellow-400 
-  transition-all duration-200 shadow-sm ${clayShadow} 
-  hover:shadow-md hover:translate-y-[-2px]`
+// #region --- TYPE DEFINITIONS ---
+
+type StudentProfile = {
+  name: string;
+  level: number;
+  completedLessons: string[];
+  achievements: string[];
+  points?: number;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onaudioend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onaudiostart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+  onnomatch: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onsoundend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onsoundstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onspeechend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onspeechstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  abort(): void;
+  start(): void;
+  stop(): void;
+}
+
+declare var SpeechRecognition: {
+  prototype: SpeechRecognition;
+  new(): SpeechRecognition;
+};
+
+// Message types
+interface BaseMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  timestamp: string;
+  name?: string;
+}
+
+interface TextMessage extends BaseMessage {
+  content: string;
+  type?: 'text';
+}
+
+interface StructuredMessage extends BaseMessage {
+  content: { type: string; [key: string]: any };
+  type: 'structured';
+}
+
+type ChatMessage = TextMessage | StructuredMessage;
+
+type Lesson = {
+  id: string;
+  title: string;
+  description: string;
+  content: any[];
+  completed?: boolean;
+};
+
+// Prop types for dynamically loaded components
+interface EmotionSelectorProps {
+  selectedEmotion: string | null;
+  onSelect: Dispatch<SetStateAction<string | null>>;
+}
+
+interface SunnyCharacterProps {
+  emotion: string | null;
+  className?: string;
+}
+
+// #endregion
+
+// #region --- DYNAMIC COMPONENTS ---
+
+const EmotionSelector = dynamic(() => import('@/components/emotion-selector').then(mod => mod.default as React.FC<EmotionSelectorProps>), { ssr: false });
+const SunnyCharacter = dynamic(() => import('@/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
+const ContentRenderer = dynamic(() => import('@/components/interactive/ContentRenderer'), { ssr: false });
+
+// #endregion
+
+// #region --- UI STYLES ---
+
+const clayShadow = "shadow-[6px_6px_0px_0px_rgba(0,0,0,0.15)]";
+const clayButton = `rounded-lg border-2 border-black px-6 py-2 font-bold transition-all duration-200 ${clayShadow} hover:shadow-md hover:translate-y-[-2px]`;
+const clayInput = `rounded-lg border-2 border-black w-full p-2 bg-white text-black focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200 shadow-sm ${clayShadow} hover:shadow-md`;
+
+// #endregion
 
 function Chat() {
-  const searchParams = useSearchParams();
-  const [name, setName] = useState<string>(() => {
-    return typeof window !== 'undefined' ? localStorage.getItem('studentName') || 'Student' : 'Student';
-  });
-  const [isNameSet, setIsNameSet] = useState<boolean>(true);
-  const [selectedEmotion, setSelectedEmotion] = useState<string | null>('happy');
-  const [question, setQuestion] = useState<string>("");
-  const [rewardCount, setRewardCount] = useState<number>(0);
-  const [showReward, setShowReward] = useState<boolean>(false);
-  const [isVoiceModeActive, setIsVoiceModeActive] = useState<boolean>(false);
-  const [textToSpeak, setTextToSpeak] = useState<string>('');
+  const { processMessage, isProcessing } = useLearningChat();
+  const { currentLesson, currentStep, isInLesson, nextStep, previousStep } = useLearningSession();
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>({
-    name: 'Student',
-    level: 1,
-    points: 0,
-    completedLessons: [],
-    emotion: 'happy',
-    learningStyle: 'visual',
-    difficulty: 'beginner',
-    preferredLearningStyle: 'visual',
-    knownConcepts: [],
-    knowledgeGaps: [],
-    conversationHistory: []
+  const [studentProfile, setStudentProfile] = useState<StudentProfile>({ 
+    name: 'Alex', level: 5, completedLessons: ['intro-to-bees'], achievements: ['First Flight'], points: 150 
   });
-  const [completedLesson, setCompletedLesson] = useState<{
-    id: string;
-    title: string;
-    completedAt: string;
-  } | null>(null);
-  
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
-    api: '/api/chat',
-    initialMessages: [],
-    onResponse: (response) => {
-      if (isVoiceModeActive) {
-        const reader = response.body?.getReader();
-        if (reader) {
-          const decoder = new TextDecoder();
-          let fullText = '';
-          
-          const readStream = async () => {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              const text = decoder.decode(value);
-              const lines = text.split('\n').filter(line => line.trim() !== '');
-              
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const message = line.replace(/^data: /, '');
-                  if (message === '[DONE]') continue;
-                  try {
-                    const parsed = JSON.parse(message);
-                    if (parsed.choices?.[0]?.delta?.content) {
-                      fullText += parsed.choices[0].delta.content;
-                      setTextToSpeak(fullText);
-                    }
-                  } catch (e) {
-                    console.error('Error parsing message:', e);
-                  }
-                }
-              }
-            }
-          };
-          
-          readStream();
-        }
-      }
-    },
-  });
-  
-  const lastAssistantMessageContent = messages
-    .filter(m => m.role === 'assistant')
-    .slice(-1)[0]?.content || '';
-  
-  // Check for completed lessons when the component mounts
+  const [selectedEmotion, setSelectedEmotion] = useState<string | null>('happy');
+
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    // This check ensures the code runs only in the browser
-    if (typeof window !== 'undefined') {
-      // Set initial welcome message if no messages exist
-      if (messages.length === 0) {
-        const welcomeMessage: AssistantMessage = {
-          id: `assistant-${Date.now()}`,
-          type: 'assistant',
-          role: 'assistant',
-          content: `Hi ${name}! I'm Sunny, your friendly AI learning companion. What would you like to learn about today?`,
-          timestamp: Date.now(),
-          name: 'Sunny',
-          isLoading: false
-        };
-        setMessages([welcomeMessage]);
-      }
-      
-      // Check localStorage for any completed lessons
-      const savedLesson = localStorage.getItem('lastCompletedLesson');
-      if (savedLesson) {
-        try {
-          const lessonData = JSON.parse(savedLesson);
-          setCompletedLesson(lessonData);
-        } catch (error) {
-          console.error('Error parsing completed lesson data:', error);
-        }
-      }
-    }
-    
-    // Check URL parameter for lesson completion
-    const lessonComplete = searchParams.get('lessonComplete');
-    if (lessonComplete === 'true') {
-      handleLessonCompleted();
-    }
-  }, [searchParams, name]);
-  
-  // Handle when a lesson has been completed and user returns to chat
-  const handleLessonCompleted = () => {
-    if (!completedLesson) return
-    
-    // Add Sunny's response about the completed lesson
-    const lessonResponse: AssistantMessage = {
-      id: `assistant-${Date.now()}`,
-      type: 'assistant',
-      role: 'assistant',
-      content: `Wow, you completed the "${completedLesson.title}" lesson! That's amazing! What did you think of it?`,
-      timestamp: Date.now(),
-      name: 'Sunny',
-      isLoading: false
-    }
-    
-    setMessages(prev => [...prev, lessonResponse])
-    
-    // Clear the completed lesson from localStorage to avoid showing the message again
-    localStorage.removeItem('lastCompletedLesson')
-    
-    // Show reward animation
-    setRewardCount(prev => prev + 1)
-    setShowReward(true)
-    setTimeout(() => setShowReward(false), 3000)
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  const handleNameSubmit = () => {
-    // This function is kept for compatibility but is not used in the simplified flow
-    if (name.trim()) {
-      localStorage.setItem('studentName', name);
-      setIsNameSet(true);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !voiceMode) return;
+
+    speechSynthesisRef.current = window.speechSynthesis;
+    const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionImpl) {
+      setVoiceError("Speech recognition not supported in this browser.");
+      return;
     }
-  }
-
-  const handleEmotionSelect = (emotion: string) => {
-    setSelectedEmotion(emotion);
-    // In the simplified flow, we don't need to add a message when emotion changes
-  }
-
-  // Handle topic selection
-  const handleTopicSelect = async (topic: 'math' | 'ideas' | 'robots' | 'space') => {
-    const topicMessages = {
-      math: `Can you help me with some math problems? I'm learning about addition and subtraction.`,
-      ideas: `I need some fun project ideas! What can I build with things around the house?`,
-      robots: `Tell me about robots! How do they work and what can they do?`,
-      space: `I want to learn about space! What's the most interesting planet?`,
-    } as const;
-
-    const recommendLesson = topic !== 'ideas';
-    const lessonId = {
-      math: 'math-patterns-001',
-      robots: 'robots-intro-001',
-      space: 'space-planets-001',
-      ideas: ''
-    }[topic];
-    
-    const message = topicMessages[topic] || topicMessages.ideas;
-    setQuestion(message);
-    
-    if (recommendLesson && lessonId) {
-      // Store the recommended lesson in localStorage
-      const lessonData = {
-        id: lessonId,
-        title: `Recommended Lesson: ${topic.charAt(0).toUpperCase() + topic.slice(1)}`,
-        completedAt: new Date().toISOString()
-      };
-      localStorage.setItem('lastCompletedLesson', JSON.stringify(lessonData));
-      setCompletedLesson(lessonData);
-    }
-    
-    // Auto-send the message if there's content
-    if (message && !isLoading) {
-      const userMessage = {
-        id: `user-${Date.now()}`,
-        type: 'user',
-        role: 'user' as const,
-        content: message,
-        name: name || 'User',
-        timestamp: Date.now(),
-      };
-      
-      // Update the input field and trigger submission
-      handleInputChange({ target: { value: message } } as React.ChangeEvent<HTMLInputElement>);
-      
-      try {
-        // Add user message to UI immediately
-        setMessages(prev => [...prev, userMessage]);
-        
-        // Call the API
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            messages: [...messages, { role: 'user', content: message }],
-            stream: true
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to send message');
-        }
-        
-        // Handle streaming response
-        const reader = response.body?.getReader();
-        if (reader) {
-          const decoder = new TextDecoder();
-          let assistantMessage = '';
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
-            
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const message = line.replace(/^data: /, '');
-                if (message === '[DONE]') continue;
-                
-                try {
-                  const parsed = JSON.parse(message);
-                  if (parsed.choices?.[0]?.delta?.content) {
-                    assistantMessage += parsed.choices[0].delta.content;
-                    
-                    // Update the assistant's message in real-time
-                    setMessages(prev => {
-                      const lastMessage = prev[prev.length - 1];
-                      if (lastMessage?.role === 'assistant') {
-                        return [...prev.slice(0, -1), { ...lastMessage, content: assistantMessage }];
-                      }
-                      return [...prev, { 
-                        id: `assistant-${Date.now()}`,
-                        type: 'assistant',
-                        role: 'assistant',
-                        content: assistantMessage,
-                        name: 'Sunny',
-                        timestamp: Date.now()
-                      }];
-                    });
-                    
-                    // Speak the message in voice mode
-                    if (isVoiceModeActive) {
-                      speakMessage(assistantMessage);
-                    }
-                  }
-                } catch (e) {
-                  console.error('Error parsing message:', e);
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Failed to send message', e);
-      }
-    }
-  };
-
-  const speakMessage = useCallback((text: string) => {
-    if (!isVoiceModeActive || typeof window === 'undefined' || !text) return;
-
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
 
     try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang === 'en-US') || null;
-      
-      if (voice) {
-        utterance.voice = voice;
-      }
-      
-      utterance.onend = () => {
-        setTextToSpeak('');
+      const recognition = new SpeechRecognitionImpl();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
+        setInput(transcript);
       };
 
-      utterance.onerror = (event) => {
-        console.error('SpeechSynthesis error:', event);
-        setTextToSpeak('');
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error);
+        setVoiceError(`Speech error: ${event.error}`);
+        setIsListening(false);
       };
 
-      window.speechSynthesis.speak(utterance);
+      recognition.onend = () => {
+        if (isListening) recognition.start(); // Keep listening if active
+      };
+
+      recognitionRef.current = recognition;
+      if (isListening) recognition.start();
+
     } catch (error) {
-      console.error('Error with speech synthesis:', error);
-      setTextToSpeak('');
+      console.error("Failed to initialize Speech Recognition:", error);
+      setVoiceError("Speech recognition could not be started.");
     }
-  }, [isVoiceModeActive]);
 
-  const handleSubmitWrapper = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    
-    // Call the useChat's handleSubmit
-    handleSubmit(e);
-    
-    // Speak the message in voice mode if enabled
-    if (isVoiceModeActive) {
-      speakMessage(input);
+    return () => {
+      recognitionRef.current?.stop();
+      speechSynthesisRef.current?.cancel();
+    };
+  }, [voiceMode, isListening]);
+
+  const speak = (text: string) => {
+    if (speechSynthesisRef.current && voiceMode) {
+      speechSynthesisRef.current.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesisRef.current.speak(utterance);
     }
   };
 
+  const handleUserMessage = useCallback(async (content: string) => {
+    if (!content.trim()) return;
+
+    const userMessage: TextMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    const response = await processMessage(content);
+    
+    const assistantMessage: ChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: response.content,
+      timestamp: new Date().toISOString(),
+      type: typeof response.content === 'string' ? 'text' : 'structured',
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
+    const textToSpeak = typeof response.content === 'string' ? response.content : response.content.text;
+    if (textToSpeak) speak(textToSpeak);
+
+  }, [processMessage]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleUserMessage(input);
+    setInput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
+  const toggleListening = () => {
+    if (!voiceMode) setVoiceMode(true);
+    setIsListening(prev => !prev);
+  };
+  
+  const handleNext = () => nextStep?.();
+  const handlePrevious = () => previousStep?.();
+  const handleQuizAnswer = (answer: string | number) => console.log('Quiz answer:', answer);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 max-w-4xl flex-1">
-        {/* Chat Messages */}
-        <div className="space-y-4 mb-6">
-          {messages.map((message: AIChatMessage) => {
-            const uiMessage: UIMessage = {
-              id: message.id,
-              role: message.role === 'user' ? 'user' : 'assistant',
-              content: typeof message.content === 'string' ? message.content : '',
-              name: message.role === 'assistant' ? 'Sunny' : (name || 'User'),
-              timestamp: Date.now(),
-              type: message.role === 'assistant' ? 'assistant' : 'user',
-              isLoading: false
-            };
-            return (
-              <ChatMessage 
-                key={message.id} 
-                message={uiMessage} 
-                isUser={message.role === 'user'}
-              />
-            );
-          })}
+    <div className="flex h-screen bg-gray-50 font-sans">
+      <aside className="w-1/3 bg-yellow-100 p-6 flex flex-col justify-between border-r-4 border-black">
+        <div>
+          <header className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-800">Sunny</h1>
+            <p className="text-lg text-gray-600">Your AI Learning Companion</p>
+          </header>
+          <SunnyCharacter emotion={selectedEmotion} className="w-full h-auto" />
+          <EmotionSelector selectedEmotion={selectedEmotion} onSelect={setSelectedEmotion} />
         </div>
-        
-        {/* Input Area - Clay Style */}
-        {selectedEmotion && (
-          <div className={`${clayCard} border-yellow-400 bg-yellow-100 p-6 transform -rotate-1`}>
-            <form onSubmit={handleSubmitWrapper} className="w-full">
-              <div className="flex items-center gap-3">
-                <Input
-                  type="text"
-                  value={input}
-                  onChange={handleInputChange}
-                  placeholder="Type a message..."
-                  className={clayInput}
-                  disabled={isLoading}
-                  name="message"
-                />
-                <Button
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className={`${clayButton} bg-blue-500 hover:bg-blue-600 text-white border-blue-600`}
-                >
-                  {isLoading ? 'Sending...' : 'Send'}
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center 
-                    bg-gradient-to-br from-green-400 to-green-500 text-white 
-                    border-4 border-green-600 shadow-lg hover:shadow-xl 
-                    transition-all duration-200 transform hover:scale-105 active:scale-95
-                    disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                    focus:outline-none focus:ring-4 focus:ring-green-200 focus:ring-opacity-50`}
-                  aria-label="Send message"
-                  style={{
-                    boxShadow: '4px 4px 0 rgba(0,0,0,0.15)'
-                  }}
-                >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="24" 
-                    height="24" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    className={`transition-transform duration-200 ${!input.trim() || isLoading ? 'opacity-70' : 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5'}`}
-                  >
-                    <path d="m22 2-7 20-4-9-9-4Z" />
-                    <path d="M22 2 11 13" />
-                  </svg>
-                </Button>
-
-                <Button
-                  type="button"
-                  variant={isVoiceModeActive ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setIsVoiceModeActive(!isVoiceModeActive)}
-                  className={cn("rounded-full h-14 w-14", clayShadow, {
-                    "bg-blue-500 text-white hover:bg-blue-600": isVoiceModeActive,
-                    "bg-white text-gray-700 hover:bg-gray-100": !isVoiceModeActive
-                  })}
-                  aria-label={isVoiceModeActive ? "Disable voice mode" : "Enable voice mode"}
-                >
-                  {isVoiceModeActive ? (
-                    <Volume2 className="h-6 w-6" />
-                  ) : (
-                    <VolumeX className="h-6 w-6" />
-                  )}
-                </Button>
-              </div>
-            </form>
+        <div className="bg-white/60 p-4 rounded-lg border-2 border-black">
+          <h3 className="font-bold text-lg mb-2">{studentProfile.name}'s Progress</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center"><Badge variant="secondary">Level {studentProfile.level}</Badge><span className="font-semibold">{studentProfile.points} pts</span></div>
+            <div className="flex flex-wrap gap-2">
+              {studentProfile.achievements.map(ach => <Badge key={ach} variant="default"> <Award className="w-4 h-4 mr-1"/> {ach}</Badge>)}
+            </div>
           </div>
-        )}
-      </div>
-      
-      {/* Footer - Clay Style */}
-      <footer className="py-5 px-6 text-center relative z-10">
-        <div className={`${clayCard} border-purple-400 bg-purple-300 py-4 px-8 inline-block transform -rotate-1`}>
-          <p className="text-lg font-bold text-purple-800 flex items-center justify-center gap-3">
-            <span>Sunny AI for Schools</span>
-            <span className="text-2xl">☀️</span>
-            <Link href="/teacher" className="inline-block px-4 py-2 bg-yellow-300 text-yellow-800 rounded-full border-2 border-yellow-400 hover:bg-yellow-400 transition-all hover:scale-110 hover:rotate-3 transform">
-              Teacher Zone
-            </Link>
-          </p>
         </div>
-      </footer>
+      </aside>
+
+      <main className="w-2/3 flex flex-col h-screen">
+        <header className="flex items-center justify-between p-4 border-b-4 border-black bg-white">
+          <div className="flex items-center space-x-2">
+            <Lightbulb className="text-yellow-500" />
+            <h2 className="font-bold text-xl">{isInLesson ? currentLesson?.title : "Chat with Sunny"}</h2>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button onClick={() => setVoiceMode(!voiceMode)} className={cn(clayButton, voiceMode ? 'bg-green-400' : 'bg-gray-200', 'p-2')} title={voiceMode ? 'Disable Voice Mode' : 'Enable Voice Mode'}>
+              {voiceMode ? <Mic className="w-5 h-5"/> : <MicOff className="w-5 h-5"/>}
+            </button>
+            <Settings className="text-gray-600 cursor-pointer" />
+          </div>
+        </header>
+        
+        <div className="flex-1 overflow-y-auto p-6 bg-blue-50/50">
+          <div className="space-y-6">
+            {messages.map((message) => (
+              <div key={message.id}>
+                {message.type !== 'structured' ? (
+                  <div className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {message.role === 'assistant' && <SunnyCharacter emotion="happy" className="w-12 h-12" />}
+                    <div className={`max-w-xl px-4 py-3 rounded-2xl ${clayShadow} border-2 border-black ${message.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
+                      {message.content}
+                    </div>
+                  </div>
+                ) : (
+                  <ContentRenderer content={message.content} onNext={handleNext} onPrevious={handlePrevious} onAnswer={handleQuizAnswer} isFirst={currentStep === 0} isLast={currentLesson ? currentStep === currentLesson.content.length - 1 : false} showNavigation={isInLesson} />
+                )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        <div className="border-t-4 border-black p-4 bg-white">
+          <form onSubmit={handleSubmit} className="flex items-center space-x-3">
+            <div className="flex-1 relative">
+              <Input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask me anything or say 'teach me about...'" className={clayInput} disabled={isProcessing} />
+              {isProcessing && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>}
+            </div>
+            <button onClick={toggleListening} className={cn(clayButton, isListening ? 'bg-red-500' : 'bg-blue-400', 'p-2')} title={isListening ? 'Stop Listening' : 'Start Listening'}>
+              {isListening ? <MicOff className="w-6 h-6"/> : <Mic className="w-6 h-6"/>}
+            </button>
+            <Button type="submit" className={`${clayButton} bg-blue-500 text-white hover:bg-blue-600`} disabled={!input.trim() || isProcessing}>Send</Button>
+          </form>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {["Teach me about bees", "Quiz me", "What can you teach me?"].map((suggestion) => (
+              <button key={suggestion} onClick={() => handleUserMessage(suggestion)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition-colors border border-gray-300">
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {voiceError && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 z-50">
+          <XCircle className="w-5 h-5" />
+          <span>{voiceError}</span>
+          <button onClick={() => setVoiceError(null)} className="ml-4 text-red-500 hover:text-red-700 font-bold" aria-label="Dismiss error">&times;</button>
+        </motion.div>
+      )}
     </div>
-  )
+  );
 }
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  // A component that needs Suspense should be wrapped in it.
+  // This is a placeholder for any logic that might need it.
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-screen text-2xl font-bold">Loading Sunny...</div>}> 
       <Chat />
     </Suspense>
   );
 }
-
