@@ -102,8 +102,18 @@ export interface TeachingStrategy {
   techniques: string[];
 }
 
+export interface CompletedLesson {
+  id: string;
+  title: string;
+  completedAt: string;
+  score?: number;
+}
+
 export interface StudentProfile {
   name: string;
+  level: number;
+  points: number;
+  completedLessons: CompletedLesson[];
   emotion?: string;
   learningStyle?: LearningStyle;
   difficulty?: DifficultyLevel;

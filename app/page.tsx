@@ -33,18 +33,31 @@ const clayInput = `rounded-2xl border-4 border-purple-300 bg-white py-4 px-6 tex
   hover:shadow-md hover:translate-y-[-2px]`
 
 function Chat() {
-  const { isOnboardingComplete } = useOnboarding();
   const searchParams = useSearchParams();
-  const [name, setName] = useState<string>("") 
-  const [isNameSet, setIsNameSet] = useState<boolean>(false)
-  const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null)
-  const [question, setQuestion] = useState<string>("") 
-  const [rewardCount, setRewardCount] = useState<number>(0)
-  const [showReward, setShowReward] = useState<boolean>(false)
+  const [name, setName] = useState<string>(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('studentName') || 'Student' : 'Student';
+  });
+  const [isNameSet, setIsNameSet] = useState<boolean>(true);
+  const [selectedEmotion, setSelectedEmotion] = useState<string | null>('happy');
+  const [question, setQuestion] = useState<string>("");
+  const [rewardCount, setRewardCount] = useState<number>(0);
+  const [showReward, setShowReward] = useState<boolean>(false);
   const [isVoiceModeActive, setIsVoiceModeActive] = useState<boolean>(false);
   const [textToSpeak, setTextToSpeak] = useState<string>('');
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>({
+    name: 'Student',
+    level: 1,
+    points: 0,
+    completedLessons: [],
+    emotion: 'happy',
+    learningStyle: 'visual',
+    difficulty: 'beginner',
+    preferredLearningStyle: 'visual',
+    knownConcepts: [],
+    knowledgeGaps: [],
+    conversationHistory: []
+  });
   const [completedLesson, setCompletedLesson] = useState<{
     id: string;
     title: string;
@@ -100,6 +113,20 @@ function Chat() {
   useEffect(() => {
     // This check ensures the code runs only in the browser
     if (typeof window !== 'undefined') {
+      // Set initial welcome message if no messages exist
+      if (messages.length === 0) {
+        const welcomeMessage: AssistantMessage = {
+          id: `assistant-${Date.now()}`,
+          type: 'assistant',
+          role: 'assistant',
+          content: `Hi ${name}! I'm Sunny, your friendly AI learning companion. What would you like to learn about today?`,
+          timestamp: Date.now(),
+          name: 'Sunny',
+          isLoading: false
+        };
+        setMessages([welcomeMessage]);
+      }
+      
       // Check localStorage for any completed lessons
       const savedLesson = localStorage.getItem('lastCompletedLesson');
       if (savedLesson) {
@@ -114,11 +141,10 @@ function Chat() {
     
     // Check URL parameter for lesson completion
     const lessonComplete = searchParams.get('lessonComplete');
-    if (lessonComplete === 'true' && isNameSet && selectedEmotion) {
-      // When we return from a completed lesson, trigger Sunny to mention it
+    if (lessonComplete === 'true') {
       handleLessonCompleted();
     }
-  }, [searchParams, isNameSet, selectedEmotion]);
+  }, [searchParams, name]);
   
   // Handle when a lesson has been completed and user returns to chat
   const handleLessonCompleted = () => {
@@ -147,48 +173,16 @@ function Chat() {
   }
 
   const handleNameSubmit = () => {
+    // This function is kept for compatibility but is not used in the simplified flow
     if (name.trim()) {
-      setIsNameSet(true)
-      const welcomeMessage: AssistantMessage = {
-        id: `assistant-${Date.now()}`,
-        type: 'assistant',
-        role: 'assistant',
-        content: `Hi ${name}! It's so nice to meet you. How are you feeling today?`,
-        timestamp: Date.now(),
-        name: 'Sunny'
-      }
-      
-      setMessages([
-        welcomeMessage,
-      ])
+      localStorage.setItem('studentName', name);
+      setIsNameSet(true);
     }
   }
 
   const handleEmotionSelect = (emotion: string) => {
-    setSelectedEmotion(emotion)
-    
-    // Add a welcome message from Sunny
-    const welcomeMessages = {
-      happy: "I'm so happy you're here! What would you like to talk about today? 😊",
-      sad: "I'm here to help cheer you up! What's on your mind? 🌈",
-      excited: "Yay! I'm excited to chat with you! What's new? 🎉",
-      curious: "I love curious minds! What would you like to learn about today? 🧐",
-      silly: "Let's get silly! What's the funniest thing you can think of? 🤪"
-    } as const;
-    
-    const welcomeMessage: AssistantMessage = {
-      id: `assistant-${Date.now()}`,
-      type: 'assistant',
-      role: 'assistant',
-      content: welcomeMessages[emotion as keyof typeof welcomeMessages] || welcomeMessages.happy,
-      timestamp: Date.now(),
-      name: 'Sunny'
-    }
-    
-    setMessages(prev => [
-      ...prev,
-      welcomeMessage
-    ])
+    setSelectedEmotion(emotion);
+    // In the simplified flow, we don't need to add a message when emotion changes
   }
 
   // Handle topic selection
@@ -379,20 +373,6 @@ function Chat() {
               />
             );
           })}
-          {isLoading && (
-            <div className="flex items-start space-x-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                <Bot className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm">
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         
         {/* Input Area - Clay Style */}
