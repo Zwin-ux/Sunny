@@ -194,8 +194,17 @@ export default function Home() {
       timestamp: Date.now(),
     };
 
-    const newMessages: Message[] = [...messages, userMessage];
-    setMessages(newMessages);
+   const newMessages: Message[] = [...messages, userMessage];
+   setMessages(newMessages);
+    try {
+      await fetch('/api/user/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+    } catch (e) {
+      console.error('Failed to save user message');
+    }
     setIsLoading(true);
     setQuestion('');
 
@@ -250,6 +259,15 @@ export default function Home() {
         setLastAssistantMessageContent(fullResponse);
         if (isVoiceModeActive) {
           setTextToSpeak(fullResponse);
+        }
+        try {
+          await fetch('/api/user/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: { id: assistantId, type: 'assistant', role: 'assistant', content: fullResponse, timestamp: Date.now(), name: 'Sunny' } })
+          });
+        } catch (e) {
+          console.error('Failed to save assistant message');
         }
       }
 
