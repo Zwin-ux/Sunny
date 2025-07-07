@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     if (type === 'plan') {
       // Generate a learning plan based on user interests and topic
-      const promptMessages = [
+      const promptMessages: { role: 'system' | 'user' | 'assistant'; content: string; }[] = [
         { role: 'system', content: 'You are an AI tutor that creates personalized learning plans. Focus on teaching topics gradually, like a patient teacher, breaking down complex subjects into digestible parts.' },
         { role: 'user', content: `Create a learning plan for ${user.learningInterests.join(', ')}. Focus on the topic: ${topic || 'general overview'}.` }
       ];
@@ -47,8 +47,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Chat history is required for chat type' }, { status: 400 });
       }
       // Use chat history to maintain context and teach gradually
-      const systemMessage = { role: 'system', content: `You are Sunny, an AI tutor. Teach the user about their requested topic gradually, maintaining context from previous messages. Break down complex ideas into simple, understandable parts. Current user emotion: ${emotion || 'neutral'}. Adjust your tone accordingly.` };
-      const messages = [systemMessage, ...chatHistory];
+      const systemMessage: { role: 'system'; content: string } = { role: 'system', content: `You are Sunny, an AI tutor. Teach the user about their requested topic gradually, maintaining context from previous messages. Break down complex ideas into simple, understandable parts. Current user emotion: ${emotion || 'neutral'}. Adjust your tone accordingly.` };
+      // Ensure chatHistory has the correct type
+      const typedChatHistory = chatHistory.map((msg: {role: string; content: string}) => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content
+      }));
+      const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [systemMessage, ...typedChatHistory];
       const chatResponse = await openAIService.generateChatCompletion(messages);
       return NextResponse.json({ response: chatResponse });
     } else {
