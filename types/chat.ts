@@ -60,7 +60,17 @@ export interface FeedbackMessage extends Omit<BaseMessage, 'type' | 'content'> {
 
 export type Message = UserMessage | AssistantMessage | ChallengeMessage | FeedbackMessage;
 
-export type ChatMessageProps = Message & {
+export interface UIMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  name: string;
+  timestamp: number;
+  type: MessageType;
+  isLoading?: boolean;
+}
+
+export interface ChatMessageProps {
   className?: string;
 };
 

@@ -18,11 +18,12 @@ type SpeechRecognitionErrorEvent = {
   message: string;
 };
 
+// speechSynthesis is already defined in the global scope in TypeScript's DOM lib
+// We only need to declare the non-standard properties
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
     webkitSpeechRecognition: new () => SpeechRecognition;
-    speechSynthesis: SpeechSynthesis;
   }
 }
 
