@@ -6,17 +6,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // UI Components
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '../src/components/ui/button';
+import { Input } from '../src/components/ui/input';
+import { Badge } from '../src/components/ui/badge';
 import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } from 'lucide-react';
 
 // Hooks
-import { useLearningChat } from '@/hooks/useLearningChat';
-import { useLearningSession } from '@/contexts/LearningSessionContext';
+import { useLearningChat } from '../src/hooks/useLearningChat';
+import { useLearningSession } from '../src/contexts/LearningSessionContext';
 
 // Utils
-import { cn } from "@/lib/utils";
+import { cn } from "../src/lib/utils";
 
 // #region --- TYPE DEFINITIONS ---
 
@@ -114,9 +114,9 @@ interface SunnyCharacterProps {
 
 // #region --- DYNAMIC COMPONENTS ---
 
-const EmotionSelector = dynamic(() => import('@/components/emotion-selector').then(mod => mod.default as React.FC<EmotionSelectorProps>), { ssr: false });
-const SunnyCharacter = dynamic(() => import('@/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
-const ContentRenderer = dynamic(() => import('@/components/interactive/ContentRenderer'), { ssr: false });
+const EmotionSelector = dynamic(() => import('../src/components/emotion-selector').then(mod => mod.default as React.FC<EmotionSelectorProps>), { ssr: false });
+const SunnyCharacter = dynamic(() => import('../src/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
+const ContentRenderer = dynamic(() => import('../src/components/interactive/ContentRenderer'), { ssr: false });
 
 // #endregion
 
