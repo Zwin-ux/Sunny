@@ -1,6 +1,8 @@
-import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+
+// Import fs only on server side
+const fs = typeof window === 'undefined' ? require('fs') : null;
 import { Lesson, MarkdownContent, LessonContent } from '../../types/lesson';
 
 /**
@@ -8,13 +10,49 @@ import { Lesson, MarkdownContent, LessonContent } from '../../types/lesson';
  */
 export class LessonLoader {
   /**
+   * Provides a fallback lesson when running in a browser environment
+   * @param filePath Path that was attempted to be loaded
+   * @returns A minimal default lesson
+   */
+  public static getFallbackLesson(filePath: string): Lesson {
+    const filename = path.basename(filePath, path.extname(filePath));
+    return {
+      id: filename,
+      title: 'Browser Fallback Lesson',
+      description: 'This is a fallback lesson displayed when running in browser environment.',
+      topics: ['example'],
+      difficulty: 'beginner',
+      targetAgeRange: { min: 6, max: 12 },
+      learningObjectives: ['Understand client/server rendering'],
+      keywords: ['example', 'fallback'],
+      content: [
+        {
+          id: 'fallback-content-1',
+          type: 'text',
+          title: 'Fallback Content',
+          content: 'This content is a fallback for browser rendering.',
+          difficulty: 'beginner',
+          estimatedDuration: 5
+        }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
+  /**
    * Load a lesson from a Markdown file with frontmatter
    * @param filePath Path to the markdown file
    * @returns Parsed Lesson object
    */
   public static loadMarkdownLesson(filePath: string): Lesson {
     try {
-      // Read the file content
+      // Check if we're in a server environment
+      if (!fs) {
+        console.warn('Attempted to load lesson file in browser environment');
+        return this.getFallbackLesson(filePath);
+      }
+      
+      // Read the file content (server-side only)
       const fileContent = fs.readFileSync(filePath, 'utf8');
       
       // Parse frontmatter and content
@@ -49,7 +87,13 @@ export class LessonLoader {
    */
   public static loadJsonLesson(filePath: string): Lesson {
     try {
-      // Read and parse the JSON file
+      // Check if we're in a server environment
+      if (!fs) {
+        console.warn('Attempted to load JSON lesson file in browser environment');
+        return this.getFallbackLesson(filePath);
+      }
+
+      // Read and parse the JSON file (server-side only)
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lessonData = JSON.parse(fileContent);
       
@@ -60,7 +104,7 @@ export class LessonLoader {
       
       // Process any markdown content within the JSON
       if (lessonData.content) {
-        lessonData.content = lessonData.content.map((item: LessonContent) => {
+        lessonData.content = lessonData.content.map((item: any) => {
           if (item.type === 'markdown' && typeof item.content === 'string') {
             // Convert string content to MarkdownContent object
             return {
