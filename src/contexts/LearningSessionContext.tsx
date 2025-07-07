@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Lesson, LearningProgress, StudentProgress } from '@/types/lesson';
-import LessonRepository from '@/lib/lessons/LessonRepository';
+import { Lesson, LearningProgress, StudentProgress } from '../types/lesson';
+import LessonRepository from '../lib/lessons/LessonRepository';
 
 type LearningSessionContextType = {
   // Current lesson state

@@ -1,4 +1,4 @@
-import { Lesson, ContentType, MediaContent, QuizQuestion } from '@/types/lesson';
+import { Lesson, ContentType, MediaContent, QuizQuestion } from '../../types/lesson';
 
 const beeMedia: MediaContent[] = [
   {

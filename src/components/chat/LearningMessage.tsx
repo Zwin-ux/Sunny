@@ -1,7 +1,7 @@
 import React from 'react';
-import { Message as ChatMessage } from '@/types/chat';
+import { Message as ChatMessage } from '../types/chat';
 import ContentRenderer from '../interactive/ContentRenderer';
-import { Lesson, ContentType } from '@/types/lesson';
+import { Lesson, ContentType } from '../types/lesson';
 import { motion } from 'framer-motion';
 
 interface LearningMessageProps {

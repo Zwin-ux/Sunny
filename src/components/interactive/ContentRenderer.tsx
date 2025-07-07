@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lesson, ContentType, MediaContent, QuizQuestion } from '@/types/lesson';
+import { Lesson, ContentType, MediaContent, QuizQuestion } from '../types/lesson';
 import Quiz from './Quiz';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Image as ImageIcon, Info } from 'lucide-react';
