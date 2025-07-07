@@ -4,7 +4,7 @@ import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { generateSunnyResponse } from '@/lib/sunny-ai';
+
 import { Message, UserMessage, AssistantMessage, StudentProfile, ChallengeMessage, Challenge } from '@/types/chat';
 import EmotionSelector from '@/components/emotion-selector';
 import { Button } from '@/components/ui/button';
@@ -198,46 +198,59 @@ function Chat() {
       timestamp: Date.now(),
     };
 
-   const newMessages: Message[] = [...messages, userMessage];
-   setMessages(newMessages);
+    const newConversation = [...messages, userMessage];
+    setMessages(newConversation);
+    setQuestion('');
+    setIsLoading(true);
+
     try {
       await fetch('/api/user/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify({ message: userMessage }),
       });
     } catch (e) {
-      console.error('Failed to save user message');
+      console.error('Failed to save user message', e);
     }
-    setIsLoading(true);
-    setQuestion('');
 
     const assistantId = `assistant-${Date.now()}`;
+    const placeholderMessage: AssistantMessage = {
+      id: assistantId,
+      type: 'assistant',
+      role: 'assistant',
+      content: '...',
+      name: 'Sunny',
+      timestamp: Date.now(),
+      isLoading: true,
+    };
+    setMessages(prev => [...prev, placeholderMessage]);
+
     try {
-      const studentProfile: StudentProfile = {
+      const currentStudentProfile: StudentProfile = {
         name: name || 'User',
         emotion: selectedEmotion || 'curious',
         learningStyle: 'kinesthetic', // This should be dynamic
         difficulty: 'easy', // This should be dynamic
       };
 
-      const apiMessages = newMessages.filter(
+      const apiMessages = newConversation.filter(
         (msg): msg is UserMessage | AssistantMessage => msg.type === 'user' || msg.type === 'assistant'
       );
 
-      const loadingMessage: AssistantMessage = {
-        id: assistantId,
-        type: 'assistant',
-        role: 'assistant',
-        content: '...',
-        name: 'Sunny',
-        timestamp: Date.now(),
-        isLoading: true,
-      };
-      setMessages(prev => [...prev, loadingMessage]);
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: apiMessages,
+          studentProfile: currentStudentProfile,
+        }),
+      });
 
-      const stream = await generateSunnyResponse(apiMessages, studentProfile);
-      const reader = stream.getReader();
+      if (!response.ok || !response.body) {
+        throw new Error('Network response was not ok.');
+      }
+
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
       let fullResponse = '';
@@ -246,62 +259,45 @@ function Chat() {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         fullResponse += decoder.decode(value, { stream: !done });
+        
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === assistantId ? { ...msg, content: fullResponse, isLoading: true } : msg
+          )
+        );
+      }
+      
+      setLastAssistantMessageContent(fullResponse);
+      if (isVoiceModeActive) {
+        setTextToSpeak(fullResponse);
       }
 
-      if (fullResponse) {
-        setLastAssistantMessageContent(fullResponse);
-        if (isVoiceModeActive) {
-          setTextToSpeak(fullResponse);
-        }
+      const finalMessage: AssistantMessage = {
+        id: assistantId,
+        type: 'assistant',
+        role: 'assistant',
+        content: fullResponse,
+        name: 'Sunny',
+        timestamp: Date.now(),
+        isLoading: false,
+      };
 
-        let finalMessage: Message;
-        try {
-          const parsed = JSON.parse(fullResponse);
-          if (parsed.type === 'challenge' && parsed.challenge) {
-            const challengeContent: Challenge = typeof parsed.challenge === 'string'
-              ? JSON.parse(parsed.challenge)
-              : parsed.challenge;
-            
-            finalMessage = {
-              id: assistantId,
-              type: 'challenge',
-              role: 'assistant',
-              name: 'Sunny',
-              content: challengeContent,
-              timestamp: Date.now(),
-              isLoading: false
-            };
-          } else {
-            finalMessage = { id: assistantId, type: 'assistant', role: 'assistant', name: 'Sunny', content: parsed.text || fullResponse, timestamp: Date.now(), isLoading: false };
-          }
-        } catch (e) {
-          finalMessage = { id: assistantId, type: 'assistant', role: 'assistant', name: 'Sunny', content: fullResponse, timestamp: Date.now(), isLoading: false };
-        }
-        
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const index = newMessages.findIndex(m => m.id === assistantId);
-          if (index !== -1) {
-            newMessages[index] = finalMessage;
-          }
-          return newMessages;
+      setMessages(prev =>
+        prev.map(msg => (msg.id === assistantId ? finalMessage : msg))
+      );
+      
+      try {
+        await fetch('/api/user/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: finalMessage }),
         });
-
-        try {
-          await fetch('/api/user/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: finalMessage })
-          });
-        } catch (e) {
-          console.error('Failed to save assistant message');
-        }
-      } else {
-        setMessages(prev => prev.filter(msg => msg.id !== assistantId));
+      } catch (e) {
+        console.error('Failed to save assistant message', e);
       }
 
     } catch (error) {
-      console.error('Error getting response from Sunny:', error);
+      console.error('Error sending message:', error);
       const errorMessage: AssistantMessage = {
         id: assistantId,
         type: 'assistant',
@@ -309,16 +305,11 @@ function Chat() {
         content: "Oh dear, I'm having a little trouble thinking right now. Let's try that again in a moment!",
         name: 'Sunny',
         timestamp: Date.now(),
-        isLoading: false
+        isLoading: false,
       };
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const index = newMessages.findIndex(m => m.id === assistantId);
-        if (index !== -1) {
-          newMessages[index] = errorMessage;
-        }
-        return newMessages;
-      });
+      setMessages(prev =>
+        prev.map(msg => (msg.id === assistantId ? errorMessage : msg))
+      );
     } finally {
       setIsLoading(false);
     }
