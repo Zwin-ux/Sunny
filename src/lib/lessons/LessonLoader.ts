@@ -1,5 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+// Lazy load Node.js modules to avoid bundling them in client builds
+const fs = () => require('fs') as typeof import('fs');
+const path = () => require('path') as typeof import('path');
 import matter from 'gray-matter';
 import { Lesson, MarkdownContent, LessonContent } from '../../types/lesson';
 
@@ -15,14 +16,14 @@ export class LessonLoader {
   public static loadMarkdownLesson(filePath: string): Lesson {
     try {
       // Read the file content
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = fs().readFileSync(filePath, 'utf8');
       
       // Parse frontmatter and content
       const { data: frontmatter, content } = matter(fileContent);
       
       // Extract lesson metadata from frontmatter
       const lesson: Lesson = {
-        id: frontmatter.id || path.basename(filePath, path.extname(filePath)),
+        id: frontmatter.id || path().basename(filePath, path().extname(filePath)),
         title: frontmatter.title || 'Untitled Lesson',
         description: frontmatter.description || '',
         topics: frontmatter.topics || [],
@@ -50,7 +51,7 @@ export class LessonLoader {
   public static loadJsonLesson(filePath: string): Lesson {
     try {
       // Read and parse the JSON file
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = fs().readFileSync(filePath, 'utf8');
       const lessonData = JSON.parse(fileContent);
       
       // Validate required fields
@@ -155,12 +156,12 @@ export class LessonLoader {
       const lessons: Lesson[] = [];
       
       // Read all files in the directory
-      const files = fs.readdirSync(dirPath);
+      const files = fs().readdirSync(dirPath);
       
       // Process each file based on extension
       files.forEach(file => {
-        const filePath = path.join(dirPath, file);
-        const ext = path.extname(file).toLowerCase();
+      const filePath = path().join(dirPath, file);
+        const ext = path().extname(file).toLowerCase();
         
         if (ext === '.md') {
           lessons.push(this.loadMarkdownLesson(filePath));

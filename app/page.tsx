@@ -2,21 +2,20 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense, Dispatch, SetStateAction } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // UI Components
-import { Button } from '../src/components/ui/button';
-import { Input } from '../src/components/ui/input';
-import { Badge } from '../src/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } from 'lucide-react';
 
 // Hooks
-import { useLearningChat } from '../src/hooks/useLearningChat';
-import { useLearningSession } from '../src/contexts/LearningSessionContext';
+import { useLearningChat } from '@/src/hooks/useLearningChat';
+import { useLearningSession, LearningSessionProvider } from '@/src/contexts/LearningSessionContext';
 
 // Utils
-import { cn } from "../src/lib/utils";
+import { cn } from "@/lib/utils";
 
 // #region --- TYPE DEFINITIONS ---
 
@@ -114,9 +113,9 @@ interface SunnyCharacterProps {
 
 // #region --- DYNAMIC COMPONENTS ---
 
-const EmotionSelector = dynamic(() => import('../src/components/emotion-selector').then(mod => mod.default as React.FC<EmotionSelectorProps>), { ssr: false });
-const SunnyCharacter = dynamic(() => import('../src/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
-const ContentRenderer = dynamic(() => import('../src/components/interactive/ContentRenderer'), { ssr: false });
+const EmotionSelector = dynamic(() => import('@/components/emotion-selector').then(mod => mod.default as React.FC<EmotionSelectorProps>), { ssr: false });
+const SunnyCharacter = dynamic(() => import('@/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
+const ContentRenderer = dynamic(() => import('@/src/components/interactive/ContentRenderer'), { ssr: false });
 
 // #endregion
 
@@ -343,13 +342,11 @@ function Chat() {
 }
 
 export default function Home() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  // A component that needs Suspense should be wrapped in it.
-  // This is a placeholder for any logic that might need it.
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen text-2xl font-bold">Loading Sunny...</div>}> 
-      <Chat />
-    </Suspense>
+    <LearningSessionProvider>
+      <Suspense fallback={<div className="flex items-center justify-center h-screen text-2xl font-bold">Loading Sunny...</div>}>
+        <Chat />
+      </Suspense>
+    </LearningSessionProvider>
   );
 }

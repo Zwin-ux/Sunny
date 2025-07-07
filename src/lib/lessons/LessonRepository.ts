@@ -1,7 +1,5 @@
 import { Lesson, ContentType } from '../../types/lesson';
 import beeLesson from './bees';
-import LessonLoader from './LessonLoader';
-import path from 'path';
 
 /**
  * LessonRepository is a singleton that manages all lessons
@@ -30,47 +28,7 @@ class LessonRepository {
     this.addLesson(beeLesson);
   }
 
-  /**
-   * Load lessons from a directory containing Markdown and JSON files
-   * @param directoryPath Path to directory containing lesson files
-   */
-  public loadLessonsFromDirectory(directoryPath: string): void {
-    try {
-      const lessons = LessonLoader.loadLessonsFromDirectory(directoryPath);
-      lessons.forEach(lesson => this.addLesson(lesson));
-      console.log(`Loaded ${lessons.length} lessons from ${directoryPath}`);
-    } catch (error) {
-      console.error(`Error loading lessons from directory ${directoryPath}:`, error);
-    }
-  }
 
-  /**
-   * Load a single lesson from a Markdown file
-   * @param filePath Path to Markdown file
-   */
-  public loadMarkdownLesson(filePath: string): void {
-    try {
-      const lesson = LessonLoader.loadMarkdownLesson(filePath);
-      this.addLesson(lesson);
-      console.log(`Loaded lesson ${lesson.id} from ${filePath}`);
-    } catch (error) {
-      console.error(`Error loading markdown lesson from ${filePath}:`, error);
-    }
-  }
-
-  /**
-   * Load a single lesson from a JSON file
-   * @param filePath Path to JSON file
-   */
-  public loadJsonLesson(filePath: string): void {
-    try {
-      const lesson = LessonLoader.loadJsonLesson(filePath);
-      this.addLesson(lesson);
-      console.log(`Loaded lesson ${lesson.id} from ${filePath}`);
-    } catch (error) {
-      console.error(`Error loading JSON lesson from ${filePath}:`, error);
-    }
-  }
 
   public addLesson(lesson: Lesson): void {
     this.lessons.set(lesson.id, lesson);

@@ -11,9 +11,18 @@ import {
   AssistantMessage,
 } from '@/types/chat';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is not set');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 type TeachingStrategyKey = 'scaffolding' | 'discovery' | 'mastery';
 type KnowledgeLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
@@ -163,7 +172,7 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
   ];
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4-turbo',
       messages: messagesForApi,
       temperature: 0.7,
