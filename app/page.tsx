@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generateSunnyResponse } from '@/lib/sunny-ai';
-import { Message, UserMessage, AssistantMessage } from '@/types/chat';
+import { Message, UserMessage, AssistantMessage, StudentProfile, ChallengeMessage, Challenge } from '@/types/chat';
 import EmotionSelector from '@/components/emotion-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,7 @@ export default function Home() {
   const [textToSpeak, setTextToSpeak] = useState<string>('');
   const [lastAssistantMessageContent, setLastAssistantMessageContent] = useState<string>('');
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [completedLesson, setCompletedLesson] = useState<{
     id: string;
     title: string;
@@ -54,24 +55,27 @@ export default function Home() {
   
   // Check for completed lessons when the component mounts
   useEffect(() => {
-    // Check localStorage for any completed lessons
-    const savedLesson = localStorage.getItem('lastCompletedLesson')
-    if (savedLesson) {
-      try {
-        const lessonData = JSON.parse(savedLesson)
-        setCompletedLesson(lessonData)
-      } catch (error) {
-        console.error('Error parsing completed lesson data:', error)
+    // This check ensures the code runs only in the browser
+    if (typeof window !== 'undefined') {
+      // Check localStorage for any completed lessons
+      const savedLesson = localStorage.getItem('lastCompletedLesson');
+      if (savedLesson) {
+        try {
+          const lessonData = JSON.parse(savedLesson);
+          setCompletedLesson(lessonData);
+        } catch (error) {
+          console.error('Error parsing completed lesson data:', error);
+        }
       }
     }
     
     // Check URL parameter for lesson completion
-    const lessonComplete = searchParams.get('lessonComplete')
+    const lessonComplete = searchParams.get('lessonComplete');
     if (lessonComplete === 'true' && isNameSet && selectedEmotion) {
       // When we return from a completed lesson, trigger Sunny to mention it
-      handleLessonCompleted()
+      handleLessonCompleted();
     }
-  }, [searchParams, isNameSet, selectedEmotion])
+  }, [searchParams, isNameSet, selectedEmotion]);
   
   // Handle when a lesson has been completed and user returns to chat
   const handleLessonCompleted = () => {
@@ -208,6 +212,7 @@ export default function Home() {
     setIsLoading(true);
     setQuestion('');
 
+    const assistantId = `assistant-${Date.now()}`;
     try {
       const studentProfile: StudentProfile = {
         name: name || 'User',
@@ -216,43 +221,31 @@ export default function Home() {
         difficulty: 'easy', // This should be dynamic
       };
 
-      // Filter for messages compatible with the API
       const apiMessages = newMessages.filter(
         (msg): msg is UserMessage | AssistantMessage => msg.type === 'user' || msg.type === 'assistant'
       );
 
-      const stream = await generateSunnyResponse(apiMessages, studentProfile);
-      
-      let fullResponse = '';
-      const assistantId = `assistant-${Date.now()}`;
-
-      // We are streaming a response, so create a placeholder message
-      // This needs to be a generic AssistantMessage because the stream might return
-      // a simple string, a Challenge, or Feedback.
-      const loadingMessage: Message = {
+      const loadingMessage: AssistantMessage = {
         id: assistantId,
-        type: 'assistant', // Default to assistant, will be updated by stream
+        type: 'assistant',
         role: 'assistant',
-        content: '', // Start with empty content
+        content: '...',
         name: 'Sunny',
         timestamp: Date.now(),
         isLoading: true,
       };
       setMessages(prev => [...prev, loadingMessage]);
 
+      const stream = await generateSunnyResponse(apiMessages, studentProfile);
       const reader = stream.getReader();
       const decoder = new TextDecoder();
       let done = false;
+      let fullResponse = '';
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
-        const chunk = decoder.decode(value, { stream: !done });
-        fullResponse += chunk;
-
-        setMessages(prev => prev.map(msg => 
-          msg.id === assistantId ? { ...msg, content: fullResponse, isLoading: !done } : msg
-        ));
+        fullResponse += decoder.decode(value, { stream: !done });
       }
 
       if (fullResponse) {
@@ -260,29 +253,72 @@ export default function Home() {
         if (isVoiceModeActive) {
           setTextToSpeak(fullResponse);
         }
+
+        let finalMessage: Message;
+        try {
+          const parsed = JSON.parse(fullResponse);
+          if (parsed.type === 'challenge' && parsed.challenge) {
+            const challengeContent: Challenge = typeof parsed.challenge === 'string'
+              ? JSON.parse(parsed.challenge)
+              : parsed.challenge;
+            
+            finalMessage = {
+              id: assistantId,
+              type: 'challenge',
+              role: 'assistant',
+              name: 'Sunny',
+              content: challengeContent,
+              timestamp: Date.now(),
+              isLoading: false
+            };
+          } else {
+            finalMessage = { id: assistantId, type: 'assistant', role: 'assistant', name: 'Sunny', content: parsed.text || fullResponse, timestamp: Date.now(), isLoading: false };
+          }
+        } catch (e) {
+          finalMessage = { id: assistantId, type: 'assistant', role: 'assistant', name: 'Sunny', content: fullResponse, timestamp: Date.now(), isLoading: false };
+        }
+        
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const index = newMessages.findIndex(m => m.id === assistantId);
+          if (index !== -1) {
+            newMessages[index] = finalMessage;
+          }
+          return newMessages;
+        });
+
         try {
           await fetch('/api/user/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: { id: assistantId, type: 'assistant', role: 'assistant', content: fullResponse, timestamp: Date.now(), name: 'Sunny' } })
+            body: JSON.stringify({ message: finalMessage })
           });
         } catch (e) {
           console.error('Failed to save assistant message');
         }
+      } else {
+        setMessages(prev => prev.filter(msg => msg.id !== assistantId));
       }
 
     } catch (error) {
       console.error('Error getting response from Sunny:', error);
       const errorMessage: AssistantMessage = {
-        id: `assistant-${Date.now()}-error`,
+        id: assistantId,
         type: 'assistant',
         role: 'assistant',
         content: "Oh dear, I'm having a little trouble thinking right now. Let's try that again in a moment!",
         name: 'Sunny',
         timestamp: Date.now(),
+        isLoading: false
       };
-      // Replace the loading message with an error message
-      setMessages(prev => [...prev.slice(0, -1), errorMessage]);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const index = newMessages.findIndex(m => m.id === assistantId);
+        if (index !== -1) {
+          newMessages[index] = errorMessage;
+        }
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }
