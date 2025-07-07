@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -31,7 +31,7 @@ const clayInput = `rounded-2xl border-4 border-purple-300 bg-white py-4 px-6 tex
   transition-all duration-200 shadow-sm ${clayShadow} 
   hover:shadow-md hover:translate-y-[-2px]`
 
-export default function Home() {
+function Chat() {
   const { isOnboardingComplete } = useOnboarding();
   const searchParams = useSearchParams();
   const [name, setName] = useState<string>("") 
@@ -843,3 +843,12 @@ export default function Home() {
     </div>
   )
 }
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Chat />
+    </Suspense>
+  );
+}
+
