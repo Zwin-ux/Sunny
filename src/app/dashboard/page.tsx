@@ -170,7 +170,7 @@ export default function DashboardPage() {
   const handleChatSubmit = async () => {
     if (!chatInput.trim() || !user) return;
 
-    const newUserMessage = { role: 'user', content: chatInput.trim() };
+    const newUserMessage = { role: 'user' as const, content: chatInput.trim() };
     const updatedChatMessages = [...chatMessages, newUserMessage];
     setChatMessages(updatedChatMessages);
     setChatInput('');
