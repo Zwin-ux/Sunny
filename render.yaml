@@ -1,13 +1,13 @@
 build:
   os: ubuntu
-  buildCommand: npm install && npm run build
+  buildCommand: chmod +x ./build.sh && ./build.sh
   staticPublishPath: .next
 
 services:
   - type: web
     name: sunny
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: chmod +x ./build.sh && ./build.sh
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
