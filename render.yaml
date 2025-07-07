@@ -1,0 +1,15 @@
+build:
+  os: ubuntu
+  buildCommand: npm install && npm run build
+  staticPublishPath: .next
+
+services:
+  - type: web
+    name: sunny
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+    autoDeploy: true
