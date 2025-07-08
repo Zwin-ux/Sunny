@@ -266,7 +266,7 @@ class LessonRepository {
     // If difficulty is specified, filter by difficulty
     if (difficulty) {
       const difficultyMatches = topicMatches.filter(lesson => lesson.difficulty === difficulty);
-      if (difficultyMatches.length > 0) {
+      if (difficultyMatches && difficultyMatches.length > 0) {
         return difficultyMatches[0];
       }
     }

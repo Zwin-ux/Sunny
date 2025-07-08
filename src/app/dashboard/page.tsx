@@ -111,7 +111,7 @@ export default function DashboardPage() {
       // In a real app, this would come from a selected lesson or generated plan
       const dummyLesson = {
         title: user.learningInterests.length > 0 ? user.learningInterests[0] : 'general knowledge',
-        content: { description: `A brief overview of ${user.learningInterests.length > 0 ? user.learningInterests[0] : 'general knowledge'}.` },
+        content: { description: `A brief overview of ${user?.learningInterests?.length > 0 ? user.learningInterests[0] : 'general knowledge'}.` },
       };
 
       const res = await fetch('/api/learn', {
@@ -267,134 +267,92 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Personalized Learning Plan</h2>
             <button
               onClick={handleGeneratePlan}
-              className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors text-lg font-semibold mb-4"
+              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
             >
-              Generate My Learning Plan
+              Generate Learning Plan
             </button>
-            {learningPlan ? (
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-96 overflow-y-auto">
-                <h3 className="text-xl font-medium text-gray-700 mb-2">Your Plan:</h3>
-                <p className="text-gray-600 whitespace-pre-wrap">{learningPlan}</p>
+            {learningPlan && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-lg font-semibold text-blue-800">Your Plan:</h3>
+                <p className="text-blue-700 whitespace-pre-wrap">{learningPlan}</p>
               </div>
-            ) : (
-              <p className="text-gray-500 italic">Click "Generate My Learning Plan" to get started!</p>
             )}
-            <div className="mt-6 text-center">
-              <Image src="/quiz.png" alt="Learning Plan" width={150} height={150} className="mx-auto" />
-            </div>
-          </section>
 
-          {/* Quiz Section */}
-          <section className="lg:col-span-3 bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Quick Quiz</h2>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">Quick Quiz</h2>
             <button
               onClick={handleGenerateQuiz}
-              className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors text-lg font-semibold mb-4"
+              className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors"
             >
-              Generate a Quiz Question
+              Generate Quiz
             </button>
-            {quiz ? (
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h3 className="text-xl font-medium text-gray-700 mb-2">Question: {quiz.question}</h3>
-                <ul className="list-disc list-inside ml-4">
-                  {quiz.options.map((option: string, index: number) => (
-                    <li key={index} className="text-gray-600">{option}</li>
-                  ))}
-                </ul>
-                <p className="mt-4 text-green-700 font-semibold">Correct Answer: {quiz.correctAnswer}</p>
-                <p className="text-gray-700 mt-2">Explanation: {quiz.explanation}</p>
+            {quiz && (
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h3 className="text-lg font-semibold text-yellow-800">Quiz on {quiz.title}:</h3>
+                <p className="text-yellow-700">{quiz.question}</p>
+                {quiz.options && (
+                  <ul className="list-disc list-inside ml-4">
+                    {quiz.options.map((option: string, idx: number) => (
+                      <li key={idx}>{option}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-4 flex space-x-2">
+                  <button
+                    onClick={handleMarkQuizCorrect}
+                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+                  >
+                    Mark Correct
+                  </button>
+                  <button
+                    onClick={() => setQuiz(null)} // Simple way to dismiss for MVP
+                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
-            ) : (
-              <p className="text-gray-500 italic">Click "Generate a Quiz Question" to test your knowledge!</p>
             )}
-            <div className="mt-6 text-center">
-              <Image src="/sunny.png" alt="Quiz" width={100} height={100} className="mx-auto" />
-            </div>
-          </section>
 
-          {/* Quiz Section */}
-          <section className="lg:col-span-3 bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Quick Quiz</h2>
-            <button
-              onClick={handleGenerateQuiz}
-              className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors text-lg font-semibold mb-4"
-            >
-              Generate a Quiz Question
-            </button>
-            {quiz ? (
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h3 className="text-xl font-medium text-gray-700 mb-2">Question: {quiz.question}</h3>
-                <ul className="list-disc list-inside ml-4">
-                  {quiz.options.map((option: string, index: number) => (
-                    <li key={index} className="text-gray-600">{option}</li>
-                  ))}
-                </ul>
-                <p className="mt-4 text-green-700 font-semibold">Correct Answer: {quiz.correctAnswer}</p>
-                <p className="text-gray-700 mt-2">Explanation: {quiz.explanation}</p>
-                <button
-                  onClick={handleMarkQuizCorrect}
-                  className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-                >
-                  Mark as Correct (for demo)
-                </button>
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">Click "Generate a Quiz Question" to test your knowledge!</p>
-            )}
-            <div className="mt-6 text-center">
-              <Image src="/sunny.png" alt="Quiz" width={100} height={100} className="mx-auto" />
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">Chat with Sunny</h2>
+            <div className="bg-gray-50 p-4 rounded-lg h-64 overflow-y-auto mb-4">
+              {chatMessages.map((msg, index) => (
+                <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                  <span className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-blue-200' : 'bg-gray-200'}`}>
+                    {msg.content}
+                  </span>
+                </div>
+              ))}
             </div>
-          </section>
-
-          {/* Chat Section */}
-          <section className="lg:col-span-3 bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Chat with Sunny</h2>
-            <div className="flex flex-col h-80 bg-gray-50 p-4 rounded-md border border-gray-200 overflow-y-auto mb-4">
-              {chatMessages.length === 0 ? (
-                <p className="text-gray-500 italic">Start a conversation with Sunny!</p>
-              ) : (
-                chatMessages.map((msg, index) => (
-                  <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    <span className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-800'}`}>
-                      {msg.content}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="flex">
+            <div className="flex space-x-2 mb-4">
               <input
                 type="text"
-                className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Ask Sunny a question..."
+                className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="Type your message..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleChatSubmit();
-                  }
-                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleChatSubmit()}
               />
-              <select
-                className="p-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                value={selectedEmotion}
-                onChange={(e) => setSelectedEmotion(e.target.value as Emotion)}
-              >
-                <option value="neutral">Neutral</option>
-                <option value="happy">Happy</option>
-                <option value="confused">Confused</option>
-                <option value="encouraging">Encouraging</option>
-                <option value="curious">Curious</option>
-              </select>
               <button
                 onClick={handleChatSubmit}
-                className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition-colors"
+                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
               >
                 Send
               </button>
             </div>
-            <div className="mt-6 text-center">
-              <Image src="/robot.png" alt="Chat with Sunny" width={100} height={100} className="mx-auto" />
+
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">Emotion Selector</h2>
+            <div className="flex space-x-2">
+              {[ 'happy', 'neutral', 'confused', 'encouraging', 'curious'].map(emotion => (
+                <button
+                  key={emotion}
+                  onClick={() => setSelectedEmotion(emotion as Emotion)}
+                  className={`px-4 py-2 rounded-full text-sm capitalize ${
+                    selectedEmotion === emotion ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {emotion}
+                </button>
+              ))}
             </div>
           </section>
         </div>

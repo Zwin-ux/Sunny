@@ -1,4 +1,4 @@
-import path from 'path';
+// import path from 'path';
 import matter from 'gray-matter';
 
 // Import fs only on server side
@@ -54,6 +54,11 @@ export class LessonLoader {
       
       // Read the file content (server-side only)
       const fileContent = fs.readFileSync(filePath, 'utf8');
+      console.log(`File content for ${filePath}:`, fileContent.substring(0, 100) + '...'); // Log first 100 chars
+      if (!fileContent) {
+        console.error(`fs.readFileSync returned undefined for file: ${filePath}`);
+        throw new Error(`Failed to read file ${filePath}`);
+      }
       
       // Parse frontmatter and content
       const { data: frontmatter, content } = matter(fileContent);
@@ -95,6 +100,11 @@ export class LessonLoader {
 
       // Read and parse the JSON file (server-side only)
       const fileContent = fs.readFileSync(filePath, 'utf8');
+      console.log(`File content for ${filePath}:`, fileContent.substring(0, 100) + '...'); // Log first 100 chars
+      if (!fileContent) {
+        console.error(`fs.readFileSync returned undefined for file: ${filePath}`);
+        throw new Error(`Failed to read file ${filePath}`);
+      }
       const lessonData = JSON.parse(fileContent);
       
       // Validate required fields
@@ -200,6 +210,11 @@ export class LessonLoader {
       
       // Read all files in the directory
       const files = fs.readdirSync(dirPath);
+      console.log(`Files in directory ${dirPath}:`, files);
+      if (!files) {
+        console.error(`fs.readdirSync returned undefined for directory: ${dirPath}`);
+        return [];
+      }
       
       // Process each file based on extension
       files.forEach(file => {

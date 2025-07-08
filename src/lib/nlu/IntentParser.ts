@@ -247,7 +247,7 @@ What would you like to learn about today?`;
   }
   
   /**
-   * Get available topics that Sunny can teach about
+   * Get available topics for suggestions
    */
   getAvailableTopics(): string[] {
     return this.lessons.map(lesson => lesson.title);

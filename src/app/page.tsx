@@ -14,42 +14,17 @@ import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } 
 // Hooks
 import { useLearningChat } from '@/hooks/useLearningChat';
 import { useLearningSession } from '@/contexts/LearningSessionContext';
-import { ContentType } from '@/types/lesson';
+
 
 // Utils
 import { cn } from "@/lib/utils";
 
 // #region --- TYPE DEFINITIONS ---
 
-type StudentProfile = {
-  name: string;
-  level: number;
-  completedLessons: string[];
-  achievements: string[];
-  points?: number;
-};
+import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile } from '@/types/chat';
 
 
-
-// Message types
-interface BaseMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  timestamp: string;
-  name?: string;
-}
-
-interface TextMessage extends BaseMessage {
-  content: string;
-  type?: 'text';
-}
-
-interface StructuredMessage extends BaseMessage {
-  content: { type: string; [key: string]: any };
-  type: 'structured';
-}
-
-type ChatMessage = TextMessage | StructuredMessage;
+// type ChatMessage = Message; // Redundant, use Message directly
 
 type Lesson = {
   id: string;
@@ -89,16 +64,24 @@ const clayInput = `rounded-lg border-2 border-black w-full p-2 bg-white text-bla
 // #endregion
 
 function Chat() {
-  const { processMessage, isProcessing } = useLearningChat();
-  const { currentLesson, currentStep, isInLesson, nextStep, previousStep } = useLearningSession();
+  const { 
+    currentLesson, 
+    currentContentIndex: currentStep, 
+    isLessonInProgress: isInLesson, 
+    goToNextContent: nextStep, 
+    goToPreviousContent: previousStep 
+  } = useLearningSession();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [studentProfile, setStudentProfile] = useState<StudentProfile>({ 
-    name: 'Alex', level: 5, completedLessons: ['intro-to-bees'], achievements: ['First Flight'], points: 150 
+  const [studentProfile, setStudentProfile] = useState<StudentProfile>({
+    name: 'Alex', level: 5, completedLessons: [], points: 150,
+    emotion: 'happy', learningStyle: 'visual', difficulty: 'easy',
+    preferredLearningStyle: 'visual', knownConcepts: [], knowledgeGaps: [],
+    conversationHistory: [],
   });
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>('happy');
 
@@ -110,11 +93,55 @@ function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const speak = useCallback((text: string) => {
+    if (speechSynthesisRef.current && voiceMode) {
+      speechSynthesisRef.current.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesisRef.current.speak(utterance);
+    }
+  }, [voiceMode]);
+
+  const onNewMessage = useCallback((message: Message) => {
+    let chatMessage: Message;
+
+    if (message.type === 'user') {
+      chatMessage = message as UserMessage;
+    } else if (message.type === 'assistant' || message.type === 'system') {
+      chatMessage = message as AssistantMessage;
+    } else if (message.type === 'challenge') {
+      chatMessage = message as ChallengeMessage;
+    } else if (message.type === 'feedback') {
+      chatMessage = message as FeedbackMessage;
+    } else {
+      // Fallback for unknown message types, though ideally all should be covered
+      chatMessage = message as Message;
+    }
+
+    setMessages(prev => [...prev, chatMessage]);
+
+    if (message.role === 'assistant') {
+      let textToSpeak: string | undefined;
+      if (typeof message.content === 'string') {
+        textToSpeak = message.content;
+      } else if (message.type === 'feedback') {
+        textToSpeak = (message.content as FeedbackContent).message;
+      } else if (message.type === 'challenge') {
+        textToSpeak = (message.content as Challenge).question;
+      }
+
+      if (textToSpeak) {
+        speak(textToSpeak);
+      }
+    }
+  }, [speak]);
+
+  const { handleUserMessage, isProcessing, handleQuizAnswer: handleChatQuizAnswer } = useLearningChat(onNewMessage, studentProfile);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !voiceMode) return;
 
     speechSynthesisRef.current = window.speechSynthesis;
-    const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognitionImpl = window.SpeechRecognition;
 
     if (!SpeechRecognitionImpl) {
       setVoiceError("Speech recognition not supported in this browser.");
@@ -128,7 +155,7 @@ function Chat() {
       recognition.lang = 'en-US';
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
+        const transcript = Array.from(event.results).map((r: any) => r[0].transcript).join('');
         setInput(transcript);
       };
 
@@ -139,7 +166,7 @@ function Chat() {
       };
 
       recognition.onend = () => {
-        if (isListening) recognition.start(); // Keep listening if active
+        if (isListening) recognition.start();
       };
 
       recognitionRef.current = recognition;
@@ -156,45 +183,12 @@ function Chat() {
     };
   }, [voiceMode, isListening]);
 
-  const speak = (text: string) => {
-    if (speechSynthesisRef.current && voiceMode) {
-      speechSynthesisRef.current.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesisRef.current.speak(utterance);
-    }
-  };
-
-  const handleUserMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return;
-
-    const userMessage: TextMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    const response = await processMessage(content);
-    
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content: response.content,
-      timestamp: new Date().toISOString(),
-      type: typeof response.content === 'string' ? 'text' : 'structured',
-    };
-    setMessages(prev => [...prev, assistantMessage]);
-
-    const textToSpeak = typeof response.content === 'string' ? response.content : response.content.text;
-    if (textToSpeak) speak(textToSpeak);
-
-  }, [processMessage]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleUserMessage(input);
-    setInput('');
+    if (input.trim()) {
+      handleUserMessage(input);
+      setInput('');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -211,7 +205,9 @@ function Chat() {
   
   const handleNext = () => nextStep?.();
   const handlePrevious = () => previousStep?.();
-  const handleQuizAnswer = (isCorrect: boolean) => console.log('Quiz answer:', isCorrect);
+  const handleQuizAnswer = (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => {
+    handleChatQuizAnswer(isCorrect, questionId, challenge, userAnswer);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans">
@@ -227,9 +223,9 @@ function Chat() {
         <div className="bg-white/60 p-4 rounded-lg border-2 border-black">
           <h3 className="font-bold text-lg mb-2">{studentProfile.name}'s Progress</h3>
           <div className="space-y-2">
-            <div className="flex justify-between items-center"><Badge variant="secondary">Level {studentProfile.level}</Badge><span className="font-semibold">{studentProfile.points} pts</span></div>
+            <div className="flex justify-between items-center"><Badge>Level {studentProfile.level}</Badge><span className="font-semibold">{studentProfile.points} pts</span></div>
             <div className="flex flex-wrap gap-2">
-              {studentProfile.achievements.map(ach => <Badge key={ach} variant="default"> <Award className="w-4 h-4 mr-1"/> {ach}</Badge>)}
+              {studentProfile.completedLessons.map((lesson, index) => <Badge key={index}> <Award className="w-4 h-4 mr-1"/> {lesson.title}</Badge>)}
             </div>
           </div>
         </div>
@@ -252,33 +248,11 @@ function Chat() {
         <div className="flex-1 overflow-y-auto p-6 bg-blue-50/50">
           <div className="space-y-6">
             {messages.map((message) => (
-              <div key={message.id}>
-                {message.type !== 'structured' ? (
-                  <div className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {message.role === 'assistant' && <SunnyCharacter emotion="happy" className="w-12 h-12" />}
-                    <div className={`max-w-xl px-4 py-3 rounded-2xl ${clayShadow} border-2 border-black ${message.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
-                      {message.content}
-                    </div>
-                  </div>
-                ) : (
-                  <ContentRenderer 
-                    content={{
-                      id: message.id,
-                      type: message.type as ContentType || 'text',
-                      title: typeof message.content === 'object' && 'title' in message.content ? message.content.title : '',
-                      content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
-                      difficulty: 'beginner',
-                      estimatedDuration: 5
-                    }} 
-                    onNext={handleNext} 
-                    onPrevious={handlePrevious} 
-                    onAnswer={handleQuizAnswer} 
-                    isFirst={currentStep === 0} 
-                    isLast={currentLesson ? currentStep === currentLesson.content.length - 1 : false} 
-                    showNavigation={isInLesson} 
-                  />
-                )}
-              </div>
+              <ChatMessage
+                key={message.id}
+                message={message}
+                isUser={message.role === 'user'}
+              />
             ))}
             <div ref={messagesEndRef} />
           </div>
@@ -290,8 +264,8 @@ function Chat() {
               <Input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask me anything or say 'teach me about...'" className={clayInput} disabled={isProcessing} />
               {isProcessing && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>}
             </div>
-            <button onClick={toggleListening} className={cn(clayButton, isListening ? 'bg-red-500' : 'bg-blue-400', 'p-2')} title={isListening ? 'Stop Listening' : 'Start Listening'}>
-              {isListening ? <MicOff className="w-6 h-6"/> : <Mic className="w-6 h-6"/>}
+            <button onClick={() => setVoiceMode(!voiceMode)} className={cn(clayButton, voiceMode ? 'bg-green-400' : 'bg-gray-200', 'p-2')} title={voiceMode ? 'Disable Voice Mode' : 'Enable Voice Mode'}>
+              {voiceMode ? <Mic className="w-5 h-5"/> : <MicOff className="w-5 h-5"/>}
             </button>
             <Button type="submit" className={`${clayButton} bg-blue-500 text-white hover:bg-blue-600`} disabled={!input.trim() || isProcessing}>Send</Button>
           </form>

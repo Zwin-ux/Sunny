@@ -1,4 +1,6 @@
 import OpenAI from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { v4 as uuidv4 } from 'uuid';
 import { 
   SunnyChatMessage, 
   MessageType, 
@@ -178,7 +180,7 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
     // Create a new stream with an error message
     return new ReadableStream({
       start(controller) {
-        controller.enqueue('Error: Could not connect to Sunny. Please try again.');
+        controller.enqueue(new TextEncoder().encode('Error: Could not connect to Sunny. Please try again.'));
         controller.close();
       }
     });
@@ -187,56 +189,156 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
 
 /**
  * Generates a mini-challenge for the user based on a topic.
- * In a real application, this would be powered by an AI model.
+ * This is now powered by the OpenAI API for dynamic challenge creation.
  */
-export async function generateMiniChallenge(topic: string): Promise<Challenge> {
-  console.log(`Generating challenge for topic: ${topic}`);
-  await new Promise((resolve) => setTimeout(resolve, 800));
+export async function generateMiniChallenge(
+  topic: string,
+  difficulty: DifficultyLevel = 'easy',
+  learningStyle: LearningStyle = 'visual'
+): Promise<Challenge> {
+  console.log(`Generating challenge for topic: ${topic}, difficulty: ${difficulty}, style: ${learningStyle}`);
 
-  const challenges: Record<string, Challenge> = {
-    'math': {
-      type: 'multiple-choice',
-      question: 'What comes after 5 + 3?',
-      options: ['7', '8', '9', '10'],
-      correctAnswer: '8',
-      explanation: 'When you add 5 and 3 together, you get 8.',
-      difficulty: 'easy',
-      learningStyle: ['visual', 'logical'],
-      followUpQuestions: ['What is 5 + 4?', 'Can you think of another way to make 8?'],
-    },
-    'pattern': {
-      type: 'pattern',
-      question: 'What comes next in the pattern?',
-      options: ['🔴', '🔵', '🟢', '🟡'],
-      correctAnswer: ['🔵', '🔴', '🔵', '🔴'],
-      explanation: 'The pattern alternates between blue and red circles.',
-      difficulty: 'medium',
-      learningStyle: ['visual', 'logical'],
-      realWorldExample: 'Like traffic lights changing colors in a pattern.',
-    },
-    'robotics': {
-      type: 'multiple-choice',
-      question: 'Which of these helps a robot \'see\'?',
-      options: ['Camera', 'Speaker', 'Wheel', 'Battery'],
-      correctAnswer: 'Camera',
-      explanation: 'Cameras are the sensors that allow robots to see their environment.',
-      difficulty: 'easy',
-      learningStyle: ['visual', 'kinesthetic'],
-      followUpQuestions: ['What other sensors might a robot have?'],
-    },
-    'science': {
-      type: 'multiple-choice',
-      question: 'Which planet is known as the Red Planet?',
-      options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
-      correctAnswer: 'Mars',
-      explanation: 'Mars is often called the Red Planet because of its reddish appearance.',
-      difficulty: 'easy',
-      learningStyle: ['visual', 'reading'],
-      realWorldExample: 'The Mars rovers explore the surface of the Red Planet.',
+  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your task is to create a fun, educational mini-challenge for a child.
+  The challenge should be about the topic "${topic}".
+  The difficulty level should be "${difficulty}".
+  The child's preferred learning style is "${learningStyle}". Try to incorporate this into the challenge if possible.
+
+  You need to generate a JSON object that strictly adheres to the following TypeScript interface:
+
+  interface Challenge {
+    id: string;
+    type: 'multiple-choice' | 'pattern' | 'open-ended' | 'matching' | 'true-false' | 'short-answer';
+    question: string;
+    options?: string[]; // Required for multiple-choice, matching, true-false
+    correctAnswer: string | string[]; // String for single answer, array for matching/pattern
+    explanation: string;
+    points: number;
+    difficulty?: DifficultyLevel;
+    learningStyle?: LearningStyle[];
+    followUpQuestions?: string[];
+    realWorldExample?: string;
+  }
+
+  Here are some guidelines for generating the challenge:
+  - **id**: Use a UUID (e.g., from uuidv4()).
+  - **type**: Choose the most appropriate challenge type for the topic and difficulty.
+  - **question**: Make it clear, concise, and engaging for kids.
+  - **options**: If applicable, provide 3-4 clear options.
+  - **correctAnswer**: Ensure it's accurate and matches one of the options if applicable.
+  - **explanation**: Provide a simple, clear explanation of the correct answer.
+  - **points**: Assign a reasonable point value (e.g., 10, 20, 30).
+  - **difficulty**: Set it based on the request.
+  - **learningStyle**: Suggest relevant learning styles.
+  - **followUpQuestions**: Suggest 1-2 follow-up questions to extend learning.
+  - **realWorldExample**: Provide a simple real-world example if it makes sense.
+
+  Example for 'multiple-choice' about 'animals':
+  {
+    "id": "some-uuid-123",
+    "type": "multiple-choice",
+    "question": "Which animal says 'moo'?",
+    "options": ["Dog", "Cat", "Cow", "Duck"],
+    "correctAnswer": "Cow",
+    "explanation": "Cows are farm animals known for making a 'moo' sound!",
+    "points": 10,
+    "difficulty": "easy",
+    "learningStyle": ["auditory"],
+    "followUpQuestions": ["What sound does a pig make?", "Can you name another farm animal?"],
+    "realWorldExample": "You might hear a cow moo on a farm."
+  }
+
+  Example for 'open-ended' about 'space':
+  {
+    "id": "some-uuid-456",
+    "type": "open-ended",
+    "question": "Imagine you are an astronaut. What would you like to explore first in space and why?",
+    "correctAnswer": "Varies (creative answer expected)",
+    "explanation": "There are so many amazing things to explore in space, like planets, stars, and galaxies!",
+    "points": 20,
+    "difficulty": "medium",
+    "learningStyle": ["visual", "kinesthetic"],
+    "followUpQuestions": ["What would you pack for your space trip?", "How do astronauts eat in space?"],
+    "realWorldExample": "Astronauts like Sunita Williams have explored space on the International Space Station."
+  }
+
+  Your response MUST be a valid JSON object, and nothing else. Do not include any conversational text outside the JSON.
+  `;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [{ role: 'system', content: systemMessageContent }],
+      temperature: 0.7,
+      max_tokens: 500,
+      response_format: { type: 'json_object' },
+    });
+
+    const challengeJson = response.choices[0].message?.content;
+    if (!challengeJson) {
+      throw new Error('Failed to generate challenge: No content from OpenAI.');
     }
-  };
 
-  // Return a challenge based on the topic, or a default one
-  const challenge = challenges[topic as ChallengeKey] || challenges.math;
-  return challenge;
+    const challenge: Challenge = JSON.parse(challengeJson);
+    challenge.id = uuidv4(); // Ensure a unique ID
+    return challenge;
+
+  } catch (error) {
+    console.error('Error generating mini-challenge from OpenAI:', error);
+    // Fallback to a default challenge in case of API error
+    return {
+      id: uuidv4(),
+      type: 'multiple-choice',
+      question: `What is 2 + 2?`,
+      options: ['3', '4', '5', '6'],
+      correctAnswer: '4',
+      explanation: 'When you add two and two together, you get four!',
+      points: 10,
+      difficulty: 'easy',
+      learningStyle: ['logical'],
+      followUpQuestions: ['What is 3 + 3?'],
+    };
+  }
 }
+
+export async function generateFeedback(
+  challenge: Challenge,
+  userAnswer: string | string[],
+  isCorrect: boolean,
+  studentProfile: StudentProfile
+): Promise<string> {
+  const { name, emotion, learningStyle, difficulty } = studentProfile;
+
+  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. You are giving feedback to ${name} who just answered a challenge.
+  The child's preferred learning style is '${learningStyle}' and difficulty is '${difficulty}'.
+  The challenge was: "${challenge.question}"
+  The correct answer was: "${challenge.correctAnswer}"
+  The child's answer was: "${userAnswer}"
+  The child's answer was ${isCorrect ? 'CORRECT' : 'INCORRECT'}.
+
+  Your feedback should be:
+  1.  **Positive and Encouraging**: Always praise effort.
+  2.  **Clear and Simple**: Use language a 6-10 year old can understand.
+  3.  **Explain Why**: Briefly explain why the answer was correct or incorrect.
+  4.  **Suggest Next Steps**: If incorrect, gently guide them. If correct, encourage them to try another challenge or explore more.
+  5.  **Concise**: Keep it to 2-3 sentences.
+  6.  **Use Emojis**: Add some fun emojis! ✨😊🚀
+
+  Example for a correct answer: "That's super duper! 🎉 You got it right! The answer was indeed ${challenge.correctAnswer}. You're doing great! Want to try another challenge?"
+  Example for an incorrect answer: "Oopsie! Almost there! 🤔 The correct answer was ${challenge.correctAnswer}. Remember, ${challenge.explanation}. Don't worry, learning is all about trying! Let's try another one or learn more about this topic!"
+  `;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [{ role: 'system', content: systemMessageContent }],
+      temperature: 0.7,
+      max_tokens: 150,
+    });
+
+    return response.choices[0].message?.content || 'Great effort! Keep learning!';
+  } catch (error) {
+    console.error('Error generating feedback from OpenAI:', error);
+    return 'Great effort! Keep learning!';
+  }
+}
+

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Lesson, ContentType, MediaContent, QuizQuestion } from '../types/lesson';
+import { Lesson, ContentType, MediaContent, QuizQuestion } from '@/types/lesson';
+import { Challenge } from '@/types/chat'; // Import Challenge type
 import Quiz from './Quiz';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Image as ImageIcon, Info } from 'lucide-react';
 
 interface ContentRendererProps {
   content: Lesson['content'][number];
-  onAnswer?: (isCorrect: boolean) => void;
+  onAnswer?: (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => void; // Updated onAnswer prop
   onNext?: () => void;
   onPrevious?: () => void;
   isFirst?: boolean;
@@ -99,11 +100,12 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
           </div>
         );
       case 'quiz':
+        const challengeContent = content.content as Challenge; // Cast to Challenge
         return (
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Quiz Time!</h2>
             <Quiz
-              question={content.content as QuizQuestion}
+              question={challengeContent}
               onAnswer={onAnswer || (() => {})}
               onNext={onNext}
               isLastQuestion={isLast}
@@ -225,7 +227,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
               >
                 <p className="text-left">
                   <span className="font-medium">Hint:</span> {
-                    (content.content as QuizQuestion).explanation || 
+                    (content.content as Challenge).explanation || // Cast to Challenge
                     'Think carefully about the question and try to eliminate obviously wrong answers first.'
                   }
                 </p>

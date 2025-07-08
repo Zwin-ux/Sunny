@@ -1,7 +1,11 @@
+import { Lesson, LearningProgress, StudentProgress } from './lesson';
+
 // Define MessageType separately to avoid circular dependencies
 export type MessageType = 'user' | 'assistant' | 'system' | 'challenge' | 'feedback';
 export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading' | 'logical';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'beginner' | 'intermediate' | 'advanced';
+export type ContentType = 'text' | 'video' | 'quiz' | 'diagram' | 'fact' | 'markdown';
+export type ContentType = 'text' | 'video' | 'quiz' | 'diagram' | 'fact' | 'markdown';
 
 export type MessageContent = 
   | string 
@@ -133,13 +137,15 @@ export interface StudentProfile {
 }
 
 export interface Challenge {
-  type: 'multiple-choice' | 'pattern' | 'open-ended' | 'matching';
+  id: string;
+  type: 'multiple-choice' | 'pattern' | 'open-ended' | 'matching' | 'true-false' | 'short-answer';
   question: string;
   options?: string[];
   correctAnswer: string | string[];
   explanation: string;
-  difficulty: DifficultyLevel;
-  learningStyle: LearningStyle[];
+  points: number;
+  difficulty?: DifficultyLevel;
+  learningStyle?: LearningStyle[];
   followUpQuestions?: string[];
   realWorldExample?: string;
 }
