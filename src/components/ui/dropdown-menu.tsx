@@ -27,6 +27,9 @@ export function DropdownMenu({ children }: DropdownMenuProps) {
 }
 
 export function DropdownMenuTrigger({ children, asChild }: DropdownMenuTriggerProps) {
+  if (asChild) {
+    return children;
+  }
   return <div className="inline-flex">{children}</div>;
 }
 
