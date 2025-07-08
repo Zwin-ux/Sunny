@@ -33,12 +33,11 @@ export function LanguageSelector() {
           <span className="hidden md:inline">{currentLanguage.name}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent>
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
             onClick={() => setLanguage(lang.code as any)}
-            className={language === lang.code ? 'bg-accent' : ''}
           >
             {lang.name}
           </DropdownMenuItem>
