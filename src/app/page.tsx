@@ -24,7 +24,7 @@ import { mockChatHistory, mockLessons, mockTopics } from "@/lib/demo-mode";
 
 // #region --- TYPE DEFINITIONS ---
 
-import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile, UIMessage } from '@/types/chat';
+import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile, UIMessage, MessageType } from '@/types/chat';
 
 
 // type ChatMessage = Message; // Redundant, use Message directly
@@ -245,27 +245,80 @@ function Chat() {
   // Initialize demo mode with mock data
   const initializeDemoMode = useCallback(() => {
     // Convert mock chat history to Message objects
-    const initialMessages = mockChatHistory.map((msg, index): Message => ({
-      id: `demo-${index}`,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content,
-      timestamp: new Date(Date.now() - (mockChatHistory.length - index) * 60000).toISOString(),
-      type: 'text' as any, // Type assertion to match Message type
-      name: msg.role === 'assistant' ? 'Sunny' : undefined
-    }));
+    // Use type assertions to ensure compatibility with Message type
+    const initialMessages = mockChatHistory.map((msg, index) => {
+      const baseMsg = {
+        id: `demo-${index}`,
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content,
+        timestamp: Date.now() - (mockChatHistory.length - index) * 60000,
+        name: msg.role === 'assistant' ? 'Sunny' : ''
+      };
+      
+      // Create properly typed messages based on role
+      if (msg.role === 'user') {
+        return {
+          ...baseMsg,
+          type: 'user',
+          role: 'user'
+        } as UserMessage;
+      } else {
+        return {
+          ...baseMsg,
+          type: 'assistant',
+          role: 'assistant'
+        } as AssistantMessage;
+      }
+    });
     
     setMessages(initialMessages);
     // Cast mockLessons to match the Lesson type structure
-    const typedLessons = mockLessons.map(lesson => ({
-      id: lesson.id,
-      title: lesson.title,
-      description: lesson.content.description || '',
-      content: lesson.content.activities || [],
-      subject: lesson.subject,
-      duration: lesson.duration
-    }));
-    
-    setRecommendedLessons(typedLessons as unknown as Lesson[]);
+    const typedLessons = mockLessons.map(lesson => {
+      // Convert the complex content object to an array as required by Lesson type
+      // Add proper null checks to avoid 'Cannot read properties of undefined (reading 'length')' error
+      const contentArray = [];
+      
+      if (lesson && lesson.content) {
+        // Add text content if available
+        if (lesson.content.description) {
+          contentArray.push({
+            type: 'text',
+            value: lesson.content.description
+          });
+        }
+        
+        // Add objectives if available
+        if (Array.isArray(lesson.content.objectives)) {
+          contentArray.push({
+            type: 'objectives',
+            value: lesson.content.objectives
+          });
+        }
+        
+        // Add activities if available
+        if (Array.isArray(lesson.content.activities)) {
+          lesson.content.activities.forEach(activity => {
+            if (activity) {
+              contentArray.push({
+                type: 'activity',
+                value: activity
+              });
+            }
+          });
+        }
+      }
+      
+      return {
+        id: lesson.id,
+        title: lesson.title,
+        description: lesson.subject || '', // Use subject as description with fallback
+        content: contentArray,
+        subject: lesson.subject,
+        duration: lesson.duration,
+        completed: false // Add required property
+      } as Lesson;
+    });
+    setRecommendedLessons(typedLessons);
     setIsDemoMode(true);
     
     toast.info('Demo mode active - using sample content', {
@@ -276,23 +329,26 @@ function Chat() {
 
   // Handle demo mode messages with mock responses
   const handleDemoMessage = useCallback((text: string) => {
-    const userMessage: Message = {
+    // Create a properly typed UserMessage
+    const userMessage: UserMessage = {
       id: Date.now().toString(),
       role: 'user',
       content: text,
-      timestamp: new Date().toISOString(),
-      type: 'text' as any
+      timestamp: Date.now(),
+      type: 'user',
+      name: ''
     };
 
     setMessages(prev => [...prev, userMessage]);
     
     // Simulate AI response with a delay
-    const loadingMessage: Message = {
+    // Create a properly typed AssistantMessage
+    const loadingMessage: AssistantMessage = {
       id: `loading-${Date.now()}`,
       role: 'assistant',
       content: '',
-      timestamp: new Date().toISOString(),
-      type: 'text' as any,
+      timestamp: Date.now(),
+      type: 'assistant',
       isLoading: true,
       name: 'Sunny'
     };
@@ -331,12 +387,13 @@ function Chat() {
         }
       }
       
-      const aiResponse: Message = {
+      // Create a properly typed AssistantMessage
+      const aiResponse: AssistantMessage = {
         id: Date.now().toString(),
         role: 'assistant',
         content: responseContent,
-        timestamp: new Date().toISOString(),
-        type: 'text' as any,
+        timestamp: Date.now(),
+        type: 'assistant',
         name: 'Sunny'
       };
       
@@ -364,9 +421,10 @@ function Chat() {
                 id: '1',
                 role: 'assistant',
                 content: "Hi there! I'm Sunny! What would you like to learn about today?",
-                timestamp: new Date().toISOString(),
-                type: 'text'
-              }
+                timestamp: Date.now(),
+                type: 'assistant',
+                name: 'Sunny'
+              } as AssistantMessage
             ]);
             
             // Fetch recommended lessons
@@ -413,7 +471,52 @@ function Chat() {
     } catch (error) {
       console.error('Error fetching lessons:', error);
       // Use mock lessons as fallback
-      setRecommendedLessons(mockLessons as Lesson[]);
+      // Convert mock lessons to proper Lesson type
+      setRecommendedLessons(mockLessons.map(lesson => {
+        // Convert the complex content object to an array as required by Lesson type
+        // Add proper null checks to avoid 'Cannot read properties of undefined (reading 'length')' error
+        const contentArray = [];
+        
+        if (lesson && lesson.content) {
+          // Add text content if available
+          if (lesson.content.description) {
+            contentArray.push({
+              type: 'text',
+              value: lesson.content.description
+            });
+          }
+          
+          // Add objectives if available
+          if (Array.isArray(lesson.content.objectives)) {
+            contentArray.push({
+              type: 'objectives',
+              value: lesson.content.objectives
+            });
+          }
+          
+          // Add activities if available
+          if (Array.isArray(lesson.content.activities)) {
+            lesson.content.activities.forEach(activity => {
+              if (activity) {
+                contentArray.push({
+                  type: 'activity',
+                  value: activity
+                });
+              }
+            });
+          }
+        }
+        
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          description: lesson.subject || '',
+          content: contentArray,
+          subject: lesson.subject,
+          duration: lesson.duration,
+          completed: false
+        } as Lesson;
+      }));
     }
   };
 
