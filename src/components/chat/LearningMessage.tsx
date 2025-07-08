@@ -29,13 +29,13 @@ const LearningMessage: React.FC<LearningMessageProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}
+        className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'} mb-6`}
       >
-        <div className={`w-full max-w-3xl ${message.role === 'user' ? 'ml-auto' : 'mr-auto'}`}>
+        <div className={`w-full max-w-3xl ${message.role === 'assistant' ? 'mr-auto' : 'ml-auto'}`}>
           <div className={`p-4 rounded-xl ${
-            message.role === 'user'
-              ? 'bg-blue-50 border border-blue-100'
-              : 'bg-white border border-gray-100 shadow-sm'
+            message.role === 'assistant'
+              ? 'bg-white border border-gray-100 shadow-sm'
+              : 'bg-blue-50 border border-blue-100'
           }`}>
             <div className="mb-2 text-sm font-medium text-gray-500">
               {message.role === 'assistant' ? 'Sunny' : 'You'}
@@ -66,12 +66,12 @@ const LearningMessage: React.FC<LearningMessageProps> = ({
   } else if (message.type === 'feedback') {
     const feedbackContent = message.content as FeedbackContent;
     return (
-      <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'} mb-4`}>
         <div 
           className={`max-w-3/4 px-4 py-2 rounded-lg ${
-            message.role === 'user'
-              ? 'bg-blue-600 text-white rounded-br-none'
-              : 'bg-gray-100 text-gray-800 rounded-bl-none'
+            message.role === 'assistant'
+              ? 'bg-gray-100 text-gray-800 rounded-bl-none'
+              : 'bg-blue-600 text-white rounded-br-none'
           }`}
         >
           <p>{feedbackContent.message}</p>
@@ -84,12 +84,12 @@ const LearningMessage: React.FC<LearningMessageProps> = ({
     );
   } else {
     return (
-      <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'} mb-4`}>
         <div 
           className={`max-w-3/4 px-4 py-2 rounded-lg ${
-            message.role === 'user'
-              ? 'bg-blue-600 text-white rounded-br-none'
-              : 'bg-gray-100 text-gray-800 rounded-bl-none'
+            message.role === 'assistant'
+              ? 'bg-gray-100 text-gray-800 rounded-bl-none'
+              : 'bg-blue-600 text-white rounded-br-none'
           }`}
         >
           {message.content as string}
