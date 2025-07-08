@@ -1,6 +1,4 @@
-import { LearningStyle, DifficultyLevel, Challenge, ContentType } from './chat';
-
-
+import { LearningStyle, DifficultyLevel, Challenge } from './chat';
 
 // Format for Markdown content metadata
 export interface MarkdownContent {
@@ -32,6 +30,15 @@ export interface QuizQuestion {
   realWorldExample?: string;
 }
 
+export enum ContentType {
+  Text = 'text',
+  Image = 'image',
+  Video = 'video',
+  Quiz = 'quiz',
+  Challenge = 'challenge',
+  Interactive = 'interactive'
+}
+
 export interface LessonContent {
   id: string;
   type: ContentType;
@@ -43,7 +50,6 @@ export interface LessonContent {
   relatedLessons?: string[];
   media?: MediaContent[];
 }
-
 
 export interface Lesson {
   id: string;
@@ -93,3 +99,5 @@ export interface StudentProgress {
     enableAudio: boolean;
   };
 }
+
+export { ContentType };

@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu';
 import { Globe } from 'lucide-react';
 
 export function LanguageSelector() {
@@ -35,12 +35,9 @@ export function LanguageSelector() {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {languages.map((lang) => (
-          <DropdownMenuItem
-            key={lang.code}
-            onClick={() => setLanguage(lang.code as any)}
-          >
+          <div key={lang.code} className="cursor-pointer px-4 py-2 hover:bg-gray-100" onClick={() => setLanguage(lang.code as any)}>
             {lang.name}
-          </DropdownMenuItem>
+          </div>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

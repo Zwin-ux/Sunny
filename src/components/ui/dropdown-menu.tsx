@@ -13,7 +13,7 @@ type DropdownMenuTriggerProps = {
   children: React.ReactNode;
 };
 
-type DropdownMenuContentProps = {
+type DropdownMenuContentProps = React.HTMLAttributes<HTMLDivElement> & {
   children: React.ReactNode;
 };
 
@@ -70,7 +70,7 @@ export function DropdownMenuTrigger({ children, isOpen, setIsOpen }: DropdownMen
   );
 }
 
-export function DropdownMenuContent({ children, isOpen }: DropdownMenuContentProps & { isOpen?: boolean }) {
+export function DropdownMenuContent({ children, isOpen, ...props }: DropdownMenuContentProps & { isOpen?: boolean }) {
   if (!isOpen) {
     return null;
   }
@@ -78,6 +78,7 @@ export function DropdownMenuContent({ children, isOpen }: DropdownMenuContentPro
   return (
     <div 
       className="absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+      {...props}
     >
       <div className="py-1">{children}</div>
     </div>

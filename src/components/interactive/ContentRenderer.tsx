@@ -195,12 +195,16 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
               
               <div className="flex items-center space-x-2">
                 {content.type === 'quiz' || onNext ? null : (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={onNext}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Next content"
+                    disabled={isLast || !showNavigation}
                   >
                     {isLast ? 'Finish' : 'Next'}
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </div>
@@ -210,12 +214,15 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
 
       {content.type === 'quiz' && (
         <div className="mt-4 text-sm text-gray-500 text-center">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setShowExplanation(!showExplanation)}
-            className="text-blue-600 hover:text-blue-800 hover:underline"
+            className="mt-2 px-3 py-1 bg-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-300 transition-colors"
+            title="Toggle explanation"
           >
             {showExplanation ? 'Hide explanation' : 'Need help with this question?'}
-          </button>
+          </motion.button>
           
           <AnimatePresence>
             {showExplanation && (
