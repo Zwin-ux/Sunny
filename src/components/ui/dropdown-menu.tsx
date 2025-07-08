@@ -11,12 +11,12 @@ export interface DropdownMenuTriggerProps extends React.HTMLAttributes<HTMLDivEl
   asChild?: boolean;
 }
 
-export interface DropdownMenuContentProps {
+export interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   align?: 'start' | 'end' | 'center';
 }
 
-export interface DropdownMenuItemProps {
+export interface DropdownMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   onClick?: () => void;
   className?: string;
@@ -38,19 +38,31 @@ export function DropdownMenuTrigger({ children, asChild, ...props }: DropdownMen
   return <div className="inline-flex" {...props}>{children}</div>;
 }
 
-export function DropdownMenuContent({ children, align = 'center' }: DropdownMenuContentProps) {
+export function DropdownMenuContent({ children, align = 'center', ...props }: DropdownMenuContentProps) {
+  // Apply different positioning based on alignment
+  let alignmentClass = '';
+  switch (align) {
+    case 'start': alignmentClass = 'left-0 origin-top-left'; break;
+    case 'end': alignmentClass = 'right-0 origin-top-right'; break;
+    default: alignmentClass = 'left-1/2 -translate-x-1/2 origin-top'; break;
+  }
+  
   return (
-    <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+    <div 
+      className={`absolute mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 ${alignmentClass}`}
+      {...props}
+    >
       <div className="py-1">{children}</div>
     </div>
   );
 }
 
-export function DropdownMenuItem({ children, onClick, className }: DropdownMenuItemProps) {
+export function DropdownMenuItem({ children, onClick, className, ...props }: DropdownMenuItemProps) {
   return (
     <button
       onClick={onClick}
       className={`block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${className || ''}`}
+      {...props}
     >
       {children}
     </button>
