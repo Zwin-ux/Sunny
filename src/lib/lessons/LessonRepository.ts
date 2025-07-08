@@ -11,7 +11,7 @@ class LessonRepository {
   private topicIndex: Map<string, Set<string>> = new Map(); // Maps topics to lesson IDs
   private keywordIndex: Map<string, Set<string>> = new Map(); // Maps keywords to lesson IDs
   private difficultyIndex: Map<string, Set<string>> = new Map(); // Maps difficulty levels to lesson IDs
-  private contentTypeIndex: Map<string, Map<string, string[]>> = new Map(); // Maps content types to lesson IDs and content IDs
+  private contentTypeIndex: Map<ContentType, Map<string, string[]>> = new Map(); // Maps content types to lesson IDs and content IDs
   private static instance: LessonRepository;
 
   private constructor() {
@@ -240,7 +240,7 @@ class LessonRepository {
   }
   
   // Find lessons that have specific content types
-  public findLessonsByContentType(contentType: string): Lesson[] {
+  public findLessonsByContentType(contentType: ContentType): Lesson[] {
     const contentTypeMap = this.contentTypeIndex.get(contentType);
     if (!contentTypeMap) return [];
     
@@ -250,7 +250,7 @@ class LessonRepository {
   }
   
   // Get content items of a specific type from a lesson
-  public getLessonContentByType(lessonId: string, contentType: string): any[] {
+  public getLessonContentByType(lessonId: string, contentType: ContentType): any[] {
     const lesson = this.getLesson(lessonId);
     if (!lesson) return [];
     

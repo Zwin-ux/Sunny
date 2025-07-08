@@ -1,9 +1,10 @@
 // import path from 'path';
 import matter from 'gray-matter';
 
-// Import fs only on server side
+// Import fs and path only on server side
 const fs = typeof window === 'undefined' ? require('fs') : null;
-import { Lesson, MarkdownContent, LessonContent } from '../../types/lesson';
+const path = typeof window === 'undefined' ? require('path') : null;
+import { Lesson, MarkdownContent, LessonContent, ContentType } from '../../types/lesson';
 
 /**
  * LessonLoader provides utilities for loading lessons from Markdown and JSON files
@@ -28,7 +29,7 @@ export class LessonLoader {
       content: [
         {
           id: 'fallback-content-1',
-          type: 'text',
+          type: ContentType.Text,
           title: 'Fallback Content',
           content: 'This content is a fallback for browser rendering.',
           difficulty: 'beginner',
@@ -53,7 +54,7 @@ export class LessonLoader {
       }
       
       // Read the file content (server-side only)
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = this.readFileContent(filePath);
       console.log(`File content for ${filePath}:`, fileContent.substring(0, 100) + '...'); // Log first 100 chars
       if (!fileContent) {
         console.error(`fs.readFileSync returned undefined for file: ${filePath}`);
@@ -99,7 +100,7 @@ export class LessonLoader {
       }
 
       // Read and parse the JSON file (server-side only)
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = this.readFileContent(filePath);
       console.log(`File content for ${filePath}:`, fileContent.substring(0, 100) + '...'); // Log first 100 chars
       if (!fileContent) {
         console.error(`fs.readFileSync returned undefined for file: ${filePath}`);
@@ -164,7 +165,7 @@ export class LessonLoader {
       // Create a content item for this section
       const contentItem: LessonContent = {
         id: `section-${index}`,
-        type: 'markdown',
+        type: ContentType.Text,
         title,
         content: {
           source: sectionContent.trim(),
@@ -187,7 +188,7 @@ export class LessonLoader {
       frontmatter.quizzes.forEach((quiz: any, index: number) => {
         content.push({
           id: `quiz-${index}`,
-          type: 'quiz',
+          type: ContentType.Quiz,
           title: quiz.title || 'Quiz',
           content: quiz,
           difficulty: quiz.difficulty || frontmatter.difficulty || 'beginner',
@@ -197,6 +198,15 @@ export class LessonLoader {
     }
     
     return content;
+  }
+  
+  private static readFileContent(file: string): string {
+    try {
+      return fs.readFileSync(file, 'utf8');
+    } catch (error) {
+      console.error(`Error reading file ${file}:`, error);
+      return '';
+    }
   }
   
   /**

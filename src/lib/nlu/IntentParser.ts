@@ -1,7 +1,15 @@
-import { Lesson } from '../../types/lesson';
+import { Lesson, ContentType } from '../../types/lesson';
 import LessonRepository from '../lessons/LessonRepository';
 
-export type IntentType = 'learn' | 'quiz' | 'repeat' | 'help' | 'change_topic' | 'clarify' | 'unknown';
+export enum IntentType {
+  learn = 'learn',
+  quiz = 'quiz',
+  repeat = 'repeat',
+  help = 'help',
+  change_topic = 'change_topic',
+  clarify = 'clarify',
+  unknown = 'unknown',
+}
 
 export interface Intent {
   type: IntentType;
@@ -9,7 +17,7 @@ export interface Intent {
   entities: {
     topic?: string;
     difficulty?: 'beginner' | 'intermediate' | 'advanced';
-    contentType?: 'video' | 'text' | 'quiz' | 'diagram' | 'fact';
+    contentType?: ContentType;
   };
 }
 
@@ -61,18 +69,18 @@ export class IntentParser {
     
     // Check for help intent first
     if (HELP_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
-      return this.createIntent('help');
+      return this.createIntent(IntentType.help);
     }
 
     // Check for repeat intent
     if (REPEAT_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
-      return this.createIntent('repeat');
+      return this.createIntent(IntentType.repeat);
     }
 
     // Check for quiz intent
     if (QUIZ_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
       const entities = this.extractEntities(normalizedInput);
-      return this.createIntent('quiz', entities);
+      return this.createIntent(IntentType.quiz, entities);
     }
 
     // Check for learn intent with explicit keywords
@@ -86,11 +94,11 @@ export class IntentParser {
           
           // If we found a topic, return it with high confidence
           if (entities.topic) {
-            return this.createIntent('learn', entities, 0.95);
+            return this.createIntent(IntentType.learn, entities, 0.95);
           }
           
           // Otherwise, use the text after the keyword as the topic
-          return this.createIntent('learn', { ...entities, topic: potentialTopic }, 0.8);
+          return this.createIntent(IntentType.learn, { ...entities, topic: potentialTopic }, 0.8);
         }
       }
     }
@@ -98,18 +106,18 @@ export class IntentParser {
     // If no explicit learn keywords, try to extract a topic directly
     const entities = this.extractEntities(normalizedInput);
     if (entities.topic) {
-      return this.createIntent('learn', entities, 0.8);
+      return this.createIntent(IntentType.learn, entities, 0.8);
     }
 
     // Simulate GPT-3.5 function call for topic extraction
     // This mimics what a GPT-3.5 API call might do for topic extraction
     const simulatedTopic = this.simulateGptTopicExtraction(normalizedInput);
     if (simulatedTopic) {
-      return this.createIntent('learn', { topic: simulatedTopic }, 0.7);
+      return this.createIntent(IntentType.learn, { topic: simulatedTopic }, 0.7);
     }
 
     // If we can't determine intent, ask for clarification
-    return this.createIntent('unknown');
+    return this.createIntent(IntentType.unknown);
   }
   
   /**
@@ -207,16 +215,43 @@ export class IntentParser {
 
     // Extract content type preference with more comprehensive checks
     const contentTypePatterns = {
-      video: ['video', 'watch', 'show me', 'see', 'visual', 'movie', 'clip'],
-      diagram: ['diagram', 'image', 'picture', 'illustration', 'graph', 'chart', 'visual'],
-      quiz: ['quiz', 'test', 'question', 'challenge', 'assessment', 'evaluate', 'check'],
-      fact: ['fact', 'fun fact', 'interesting', 'did you know', 'trivia', 'cool info'],
-      text: ['text', 'read', 'article', 'explanation', 'describe', 'tell me']
+      [ContentType.Video]: [
+        /video/i,
+        /watch/i,
+        /see/i,
+        /visual/i,
+      ],
+      [ContentType.Image]: [
+        /image/i,
+        /picture/i,
+        /diagram/i,
+        /visual/i,
+      ],
+      [ContentType.Quiz]: [
+        /quiz/i,
+        /test/i,
+        /exam/i,
+        /question/i,
+        /assess/i,
+      ],
+      [ContentType.Fact]: [
+        /fact/i,
+        /trivia/i,
+        /info/i,
+        /knowledge/i,
+      ],
+      [ContentType.Text]: [
+        /text/i,
+        /read/i,
+        /article/i,
+        /explanation/i,
+        /explain/i,
+      ],
     };
     
     for (const [type, patterns] of Object.entries(contentTypePatterns)) {
-      if (patterns.some(pattern => normalizedInput.includes(pattern))) {
-        entities.contentType = type as 'video' | 'text' | 'quiz' | 'diagram' | 'fact';
+      if (patterns.some(pattern => pattern.test(normalizedInput))) {
+        entities.contentType = type as ContentType;
         break;
       }
     }

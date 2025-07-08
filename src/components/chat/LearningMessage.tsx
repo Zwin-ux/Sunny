@@ -1,7 +1,7 @@
 import React from 'react';
 import { Message as ChatMessage, Challenge, FeedbackContent } from '@/types/chat';
 import ContentRenderer from '@/components/interactive/ContentRenderer';
-import { Lesson } from '@/types/lesson';
+import { Lesson, ContentType } from '@/types/lesson';
 import { motion } from 'framer-motion';
 
 interface LearningMessageProps {
@@ -45,7 +45,7 @@ const LearningMessage: React.FC<LearningMessageProps> = ({
               <ContentRenderer
                 content={{
                   id: message.id,
-                  type: 'challenge',
+                  type: ContentType.Quiz,
                   title: 'Challenge',
                   content: message.content as Challenge,
                   difficulty: (message.content as Challenge).difficulty || 'easy',

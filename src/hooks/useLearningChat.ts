@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLearningSession } from '../contexts/LearningSessionContext';
 import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile } from '../types/chat';
-import { Lesson, LessonContent, MediaContent, QuizQuestion } from '../types/lesson';
+import { Lesson, LessonContent, MediaContent, QuizQuestion, ContentType } from '../types/lesson';
 import LessonRepository from '../lib/lessons/LessonRepository';
 import intentParser, { Intent } from '../lib/nlu/IntentParser';
 import { v4 as uuidv4 } from 'uuid';
@@ -48,32 +48,28 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     name: 'Sunny',
   });
 
-  const createMessageFromContent = (content: LessonContent): Message => {
-    if (content.type === 'quiz') {
-      // Assuming content.content is already a Challenge object due to previous type updates
-      const challenge = content.content as Challenge;
+  const createMessageFromContent = useCallback((contentItem: LessonContent, role: 'assistant' | 'system' = 'assistant') => {
+    let content: string | Challenge = contentItem.content as string;
+    if (contentItem.type === ContentType.Quiz || contentItem.type === ContentType.Challenge) {
+      content = contentItem.content as Challenge;
       return {
-        id: uuidv4(),
-        role: 'assistant',
+        id: contentItem.id,
+        role,
         type: 'challenge',
-        content: challenge,
-        timestamp: Date.now(),
+        content,
+        timestamp: Number(Date.now()),
         name: 'Sunny',
-      };
+      } as Message;
     }
-
-    let textContent = '';
-    if (content.type === 'text') {
-      textContent = content.content as string;
-    } else if (content.type === 'video') {
-      const mediaContent = content.content as MediaContent;
-      textContent = `Here's a video about "${content.title}": ${mediaContent.url}`;
-    } else {
-      textContent = `Next up: ${content.title}`;
-    }
-
-    return createAssistantTextMessage(textContent);
-  };
+    return {
+      id: contentItem.id,
+      role,
+      type: 'assistant',
+      content: contentItem.content as string,
+      timestamp: Number(Date.now()),
+      name: 'Sunny',
+    } as Message;
+  }, []);
 
   // Handle starting a new lesson
   const startNewLesson = useCallback((lessonId: string) => {
@@ -153,9 +149,10 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
           }
           startNewLesson(targetLesson.id);
           if (intent.entities.contentType) {
-            const contentIndex = targetLesson.content.findIndex((c: LessonContent) => c.type === intent.entities.contentType);
+            const contentType = intent.entities.contentType;
+            const contentIndex = targetLesson.content.findIndex(c => c.type === contentType);
             if (contentIndex >= 0) {
-              setTimeout(() => goToContent(targetLesson.content[contentIndex].id), 500);
+              setTimeout(() => goToContent(contentIndex.toString()), 500);
             }
           }
         } else {

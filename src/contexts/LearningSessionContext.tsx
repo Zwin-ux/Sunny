@@ -1,37 +1,29 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Lesson, LearningProgress, StudentProgress } from '../types/lesson';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { Lesson, LearningProgress, StudentProgress, ContentType } from '../types/lesson';
 import LessonRepository from '../lib/lessons/LessonRepository';
 
 type LearningSessionContextType = {
-  // Current lesson state
   currentLesson: Lesson | null;
-  setCurrentLesson: (lesson: Lesson | null) => void;
-  
-  // Progress tracking
   progress: StudentProgress;
+  isLoading: boolean;
+  error: string | null;
   startLesson: (lessonId: string) => void;
-  completeLesson: (score?: number) => void;
-  updateProgress: (contentId: string, isCompleted: boolean, answer?: any) => void;
-  
-  // Navigation
-  currentContentIndex: number;
-  goToNextContent: () => void;
-  goToPreviousContent: () => void;
-  goToContent: (contentId: string) => void;
-  
-  // Session management
-  isLessonInProgress: boolean;
-  startNewSession: () => void;
-  endSession: () => void;
-  
-  // Learning preferences
-  preferences: {
-    enableAudio: boolean;
-    setEnableAudio: (enabled: boolean) => void;
-    preferredDifficulty: 'beginner' | 'intermediate' | 'advanced';
-    setPreferredDifficulty: (level: 'beginner' | 'intermediate' | 'advanced') => void;
-  };
+  completeLesson: () => void;
+  updateProgress: (contentId: string, completed: boolean, quizScore?: number) => void;
+  setEnableAudio: (enabled: boolean) => void;
+  enableAudio: boolean;
+  setPreferredContentTypes: (contentTypes: ContentType[]) => void;
+  preferredContentTypes: ContentType[];
+  setDifficultyPreference: (difficulty: 'beginner' | 'intermediate' | 'advanced') => void;
+  difficultyPreference: 'beginner' | 'intermediate' | 'advanced';
+  saveProgressToLocalStorage: (progress: StudentProgress) => void;
 };
+
+interface LearningPreferences {
+  enableAudio: boolean;
+  preferredContentTypes: ContentType[];
+  difficultyPreference: 'beginner' | 'intermediate' | 'advanced';
+}
 
 const defaultProgress: StudentProgress = {
   studentId: 'anonymous',
@@ -41,7 +33,7 @@ const defaultProgress: StudentProgress = {
   achievements: [],
   lastActive: new Date().toISOString(),
   learningPreferences: {
-    preferredContentType: ['text', 'video'],
+    preferredContentType: [ContentType.Text, ContentType.Video],
     difficultyPreference: 'beginner',
     enableAudio: true,
   },
@@ -61,16 +53,20 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
     return { ...defaultProgress };
   });
   
-  const [preferences, setPreferences] = useState({
+  const [learningPreferences, setLearningPreferences] = useState<LearningPreferences>({
     enableAudio: true,
-    preferredDifficulty: 'beginner' as const,
+    preferredContentTypes: [ContentType.Text, ContentType.Video],
+    difficultyPreference: 'beginner',
   });
+
+  const progressRef = useRef(progress);
 
   // Save progress to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     }
+    progressRef.current = progress;
   }, [progress]);
 
   const startLesson = (lessonId: string) => {
@@ -98,7 +94,7 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
     }
   };
 
-  const completeLesson = (score?: number) => {
+  const completeLesson = () => {
     if (!currentLesson) return;
 
     setProgress(prev => ({
@@ -109,14 +105,12 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
           ...prev.lessons[currentLesson.id],
           completed: true,
           completedAt: new Date().toISOString(),
-          score,
         },
       },
-      totalPoints: prev.totalPoints + (score || 0),
     }));
   };
 
-  const updateProgress = (contentId: string, isCompleted: boolean, answer?: any) => {
+  const updateProgress = (contentId: string, completed: boolean, quizScore?: number) => {
     if (!currentLesson) return;
 
     setProgress(prev => ({
@@ -124,18 +118,43 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
       lessons: {
         ...prev.lessons,
         [currentLesson.id]: {
-          ...prev.lessons[currentLesson.id],
+          ...(prev.lessons[currentLesson.id] || {
+            lessonId: currentLesson.id,
+            completed: false,
+            progress: 0,
+            answers: {},
+            startedAt: new Date().toISOString(),
+            lastAccessed: new Date().toISOString(),
+            timeSpent: 0
+          }),
           answers: {
             ...(prev.lessons[currentLesson.id]?.answers || {}),
             [contentId]: {
-              answer,
-              isCorrect: isCompleted,
+              answer: Array.isArray(quizScore) ? quizScore.map(String) : (quizScore !== undefined ? quizScore.toString() : ''),
+              isCorrect: completed,
               submittedAt: new Date().toISOString(),
             },
           },
+          progress: calculateLessonProgress(currentLesson, {
+            ...(prev.lessons[currentLesson.id]?.answers || {}),
+            [contentId]: { answer: Array.isArray(quizScore) ? quizScore.map(String) : (quizScore !== undefined ? quizScore.toString() : ''), isCorrect: completed, submittedAt: new Date().toISOString() },
+          }),
+          lastAccessed: new Date().toISOString(),
         },
       },
+      lastActive: new Date().toISOString(),
+      learningPreferences: {
+        enableAudio: learningPreferences.enableAudio,
+        preferredContentType: learningPreferences.preferredContentTypes,
+        difficultyPreference: learningPreferences.difficultyPreference,
+      },
     }));
+  };
+
+  const calculateLessonProgress = (lesson: Lesson, answers: Record<string, { answer: string | string[]; isCorrect: boolean; submittedAt: string }>): number => {
+    const totalContent = lesson.content.length;
+    const completedContent = Object.values(answers).filter(answer => answer.isCorrect).length;
+    return totalContent > 0 ? (completedContent / totalContent) * 100 : 0;
   };
 
   const goToNextContent = () => {
@@ -177,38 +196,46 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
   };
 
   const setEnableAudio = (enabled: boolean) => {
-    setPreferences(prev => ({
-      ...prev,
-      enableAudio: enabled,
-    }));
+    setLearningPreferences(prev => ({ ...prev, enableAudio: enabled }));
   };
 
-  const setPreferredDifficulty = (level: 'beginner' | 'intermediate' | 'advanced') => {
-    setPreferences(prev => ({
-      ...prev,
-      preferredDifficulty: level,
-    }));
+  const setDifficultyPreference = (difficulty: 'beginner' | 'intermediate' | 'advanced') => {
+    setLearningPreferences(prev => ({ ...prev, difficultyPreference: difficulty }));
+    if (progressRef.current && progressRef.current.learningPreferences) {
+      progressRef.current.learningPreferences.difficultyPreference = difficulty;
+      saveProgressToLocalStorage(progressRef.current);
+    }
+  };
+
+  const setPreferredContentTypes = (contentTypes: ContentType[]) => {
+    setLearningPreferences(prev => ({ ...prev, preferredContentTypes: contentTypes }));
+    if (progressRef.current && progressRef.current.learningPreferences) {
+      progressRef.current.learningPreferences.preferredContentType = contentTypes;
+      saveProgressToLocalStorage(progressRef.current);
+    }
+  };
+
+  const saveProgressToLocalStorage = (progress: StudentProgress) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('learningProgress', JSON.stringify(progress));
+    }
   };
 
   const value = {
     currentLesson,
-    setCurrentLesson,
     progress,
+    isLoading: false,
+    error: null,
     startLesson,
     completeLesson,
     updateProgress,
-    currentContentIndex,
-    goToNextContent,
-    goToPreviousContent,
-    goToContent,
-    isLessonInProgress: !!currentLesson,
-    startNewSession,
-    endSession,
-    preferences: {
-      ...preferences,
-      setEnableAudio,
-      setPreferredDifficulty,
-    },
+    setEnableAudio,
+    enableAudio: learningPreferences.enableAudio,
+    setPreferredContentTypes,
+    preferredContentTypes: learningPreferences.preferredContentTypes,
+    setDifficultyPreference,
+    difficultyPreference: learningPreferences.difficultyPreference,
+    saveProgressToLocalStorage,
   };
 
   return (

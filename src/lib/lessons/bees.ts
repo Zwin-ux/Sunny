@@ -60,7 +60,7 @@ const beeLesson: Lesson = {
   content: [
     {
       id: 'intro',
-      type: 'text' as ContentType,
+      type: ContentType.Text,
       title: 'Introduction to Bees',
       content: 'Bees are flying insects closely related to wasps and ants, known for their role in pollination and, in the case of the best-known bee species, the western honey bee, for producing honey.',
       difficulty: 'beginner',
@@ -69,16 +69,16 @@ const beeLesson: Lesson = {
     },
     {
       id: 'types',
-      type: 'text' as ContentType,
+      type: ContentType.Text,
       title: 'Types of Bees',
-      content: 'There are over 20,000 known species of bees, but the most well-known is the honey bee. Other types include bumblebees, carpenter bees, and mason bees. Each type has a unique role in the ecosystem.',
+      content: 'There are over 16,000 known species of bees in seven recognized biological families. Some species – including honey bees, bumblebees, and stingless bees – live socially in colonies while most species are solitary.',
       difficulty: 'beginner',
-      estimatedDuration: 7,
+      estimatedDuration: 5,
       media: [beeMedia[1]]
     },
     {
       id: 'hive-life',
-      type: 'text' as ContentType,
+      type: ContentType.Text,
       title: 'Life in the Hive',
       content: 'A typical honeybee hive contains one queen, hundreds of male drones, and thousands of female worker bees. Each has specific roles in maintaining the hive and ensuring the survival of the colony.',
       difficulty: 'intermediate',
@@ -87,7 +87,7 @@ const beeLesson: Lesson = {
     },
     {
       id: 'quiz',
-      type: 'quiz' as ContentType,
+      type: ContentType.Quiz,
       title: 'Test Your Knowledge',
       content: beeQuiz[0],
       difficulty: 'beginner',
@@ -95,7 +95,7 @@ const beeLesson: Lesson = {
     },
     {
       id: 'fun-fact',
-      type: 'fact' as ContentType,
+      type: ContentType.Text,
       title: 'Did You Know?',
       content: 'A single honeybee typically visits 50-100 flowers during a single collection trip and can make about 1/12 of a teaspoon of honey in its lifetime!',
       difficulty: 'beginner',

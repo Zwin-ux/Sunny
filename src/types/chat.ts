@@ -1,11 +1,9 @@
-import { Lesson, LearningProgress, StudentProgress } from './lesson';
+import { Lesson, LearningProgress, StudentProgress, ContentType } from './lesson';
 
 // Define MessageType separately to avoid circular dependencies
 export type MessageType = 'user' | 'assistant' | 'system' | 'challenge' | 'feedback';
 export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading' | 'logical';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'beginner' | 'intermediate' | 'advanced';
-export type ContentType = 'text' | 'video' | 'quiz' | 'diagram' | 'fact' | 'markdown';
-export type ContentType = 'text' | 'video' | 'quiz' | 'diagram' | 'fact' | 'markdown';
 
 export type MessageContent = 
   | string 

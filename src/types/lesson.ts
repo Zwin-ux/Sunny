@@ -36,7 +36,8 @@ export enum ContentType {
   Video = 'video',
   Quiz = 'quiz',
   Challenge = 'challenge',
-  Interactive = 'interactive'
+  Interactive = 'interactive',
+  Fact = 'fact'
 }
 
 export interface LessonContent {
