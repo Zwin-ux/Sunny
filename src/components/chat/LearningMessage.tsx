@@ -45,7 +45,7 @@ const LearningMessage: React.FC<LearningMessageProps> = ({
               <ContentRenderer
                 content={{
                   id: message.id,
-                  type: 'quiz',
+                  type: 'challenge',
                   title: 'Challenge',
                   content: message.content as Challenge,
                   difficulty: (message.content as Challenge).difficulty || 'easy',
