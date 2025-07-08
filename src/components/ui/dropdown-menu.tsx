@@ -6,7 +6,7 @@ export interface DropdownMenuProps {
   children: React.ReactNode;
 }
 
-export interface DropdownMenuTriggerProps {
+export interface DropdownMenuTriggerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   asChild?: boolean;
 }
@@ -26,11 +26,16 @@ export function DropdownMenu({ children }: DropdownMenuProps) {
   return <div className="relative inline-block text-left">{children}</div>;
 }
 
-export function DropdownMenuTrigger({ children, asChild }: DropdownMenuTriggerProps) {
+export function DropdownMenuTrigger({ children, asChild, ...props }: DropdownMenuTriggerProps) {
+  // If asChild is true, just return the children directly
   if (asChild) {
-    return children;
+    // Cast children to avoid TypeScript errors
+    return React.isValidElement(children) 
+      ? React.cloneElement(children, { ...props })
+      : children;
   }
-  return <div className="inline-flex">{children}</div>;
+  // Otherwise, wrap in a div with the inline-flex class
+  return <div className="inline-flex" {...props}>{children}</div>;
 }
 
 export function DropdownMenuContent({ children, align = 'center' }: DropdownMenuContentProps) {
