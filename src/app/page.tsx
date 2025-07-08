@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 // UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ChatMessage from '@/components/chat-message';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } from 'lucide-react';
 
@@ -21,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 // #region --- TYPE DEFINITIONS ---
 
-import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile } from '@/types/chat';
+import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile, UIMessage } from '@/types/chat';
 
 
 // type ChatMessage = Message; // Redundant, use Message directly
@@ -60,6 +61,35 @@ const ContentRenderer = dynamic(() => import('../components/interactive/ContentR
 const clayShadow = "shadow-[6px_6px_0px_0px_rgba(0,0,0,0.15)]";
 const clayButton = `rounded-lg border-2 border-black px-6 py-2 font-bold transition-all duration-200 ${clayShadow} hover:shadow-md hover:translate-y-[-2px]`;
 const clayInput = `rounded-lg border-2 border-black w-full p-2 bg-white text-black focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200 shadow-sm ${clayShadow} hover:shadow-md`;
+
+// #endregion
+
+// #region --- HELPER FUNCTIONS ---
+
+// Convert Message to UIMessage for ChatMessage component
+const convertToUIMessage = (message: Message): UIMessage => {
+  let content = '';
+  
+  if (typeof message.content === 'string') {
+    content = message.content;
+  } else if (message.type === 'challenge') {
+    const challenge = message.content as Challenge;
+    content = challenge.question;
+  } else if (message.type === 'feedback') {
+    const feedback = message.content as FeedbackContent;
+    content = feedback.message;
+  }
+
+  return {
+    id: message.id,
+    role: message.role || 'assistant',
+    content,
+    name: message.name,
+    timestamp: message.timestamp,
+    type: message.type,
+    isLoading: message.isLoading
+  };
+};
 
 // #endregion
 
@@ -250,7 +280,7 @@ function Chat() {
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
-                message={message}
+                message={convertToUIMessage(message)}
                 isUser={message.role === 'user'}
               />
             ))}
