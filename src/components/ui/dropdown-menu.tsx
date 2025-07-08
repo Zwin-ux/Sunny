@@ -17,9 +17,8 @@ type DropdownMenuContentProps = {
   children: React.ReactNode;
 };
 
-type DropdownMenuItemProps = {
+type DropdownMenuItemProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   children: React.ReactNode;
-  onClick?: () => void;
   className?: string;
 };
 
@@ -85,11 +84,11 @@ export function DropdownMenuContent({ children, isOpen }: DropdownMenuContentPro
   );
 }
 
-export function DropdownMenuItem({ children, onClick, className = '' }: DropdownMenuItemProps) {
+export function DropdownMenuItem({ children, className = '', ...props }: DropdownMenuItemProps) {
   return (
     <button
-      onClick={onClick}
       className={`block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${className}`}
+      {...props}
     >
       {children}
     </button>
