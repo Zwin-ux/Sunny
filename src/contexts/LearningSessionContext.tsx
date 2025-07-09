@@ -17,6 +17,11 @@ type LearningSessionContextType = {
   setDifficultyPreference: (difficulty: 'beginner' | 'intermediate' | 'advanced') => void;
   difficultyPreference: 'beginner' | 'intermediate' | 'advanced';
   saveProgressToLocalStorage: (progress: StudentProgress) => void;
+  currentContentIndex: number;
+  isLessonInProgress: boolean;
+  goToNextContent: () => void;
+  goToPreviousContent: () => void;
+  goToContent: (contentId: string) => void;
 };
 
 interface LearningPreferences {
@@ -236,6 +241,11 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
     setDifficultyPreference,
     difficultyPreference: learningPreferences.difficultyPreference,
     saveProgressToLocalStorage,
+    currentContentIndex,
+    isLessonInProgress: currentLesson !== null,
+    goToNextContent,
+    goToPreviousContent,
+    goToContent,
   };
 
   return (

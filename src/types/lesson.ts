@@ -100,5 +100,3 @@ export interface StudentProgress {
     enableAudio: boolean;
   };
 }
-
-export { ContentType };

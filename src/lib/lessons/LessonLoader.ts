@@ -227,7 +227,7 @@ export class LessonLoader {
       }
       
       // Process each file based on extension
-      files.forEach(file => {
+      files.forEach((file: string) => {
         const filePath = path.join(dirPath, file);
         const ext = path.extname(file).toLowerCase();
         

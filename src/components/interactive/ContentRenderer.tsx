@@ -4,6 +4,7 @@ import { Challenge } from '@/types/chat'; // Import Challenge type
 import Quiz from './Quiz';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Image as ImageIcon, Info, Lightbulb, ChevronRight, ChevronLeft } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface ContentRendererProps {
   content: Lesson['content'][number];
@@ -65,7 +66,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
         return (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center space-x-3">
-              <button className="p-3 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors">
+              <button className="p-3 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors" aria-label="Play audio">
                 <Play className="w-5 h-5" />
               </button>
               <div className="flex-1">
@@ -100,7 +101,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
           </div>
         );
       case ContentType.Quiz:
-        const challengeContent = content.content as Challenge; // Cast to Challenge
+        const challengeContent = content.content as Challenge;
         return (
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Quiz Time!</h2>
@@ -112,39 +113,18 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             />
           </div>
         );
-      case ContentType.Fact:
-        return (
-          <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 mb-4 text-sm text-yellow-700 dark:bg-yellow-900 dark:text-yellow-50 relative overflow-hidden max-h-36 fact-background">
-            <div className="font-medium mb-1 flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-yellow-500 dark:text-yellow-300" />
-              Did You Know?
-            </div>
-            <div className="overflow-hidden relative max-h-24">{content.content}</div>
-          </div>
-        );
-      case ContentType.Interactive:
-        return (
-          <div className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-800 dark:border-gray-700">
-            <div className="font-medium mb-2 text-blue-700 dark:text-blue-300 flex items-center gap-2">
-              <Info className="w-5 h-5" />
-              Interactive Content
-            </div>
-            <div>{renderInteractiveContent(content.content)}</div>
-          </div>
-        );
-      case ContentType.Challenge:
-        return <p>Unsupported content type</p>;
-      case ContentType.Video:
       case ContentType.Image:
+      case ContentType.Video:
         return (
-          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
             {!content.media || content.media.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-200 mb-3">
+              <div className="p-6 bg-gray-100 rounded-lg text-center border border-gray-200">
+                <div className="flex justify-center mb-3">
                   {content.type === ContentType.Video ? (
-                    <Play className="h-6 w-6 text-gray-500" />
+                    <Play className="w-8 h-8 text-gray-400" />
                   ) : (
-                    <ImageIcon className="h-6 w-6 text-gray-500" />
+                    <ImageIcon className="w-8 h-8 text-gray-400" />
                   )}
                 </div>
                 <h3 className="text-lg font-medium text-gray-700 mb-1">
@@ -166,7 +146,57 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             )}
           </div>
         );
+      case ContentType.Challenge:
+        const challenge = content.content as Challenge;
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
+              <h3 className="text-lg font-semibold text-yellow-800 mb-2">Challenge</h3>
+              <p className="text-yellow-700">{challenge.question || 'Complete this challenge!'}</p>
+              {challenge.options && (
+                <ul className="mt-2 space-y-1">
+                  {challenge.options.map((option, index) => (
+                    <li key={index} className="text-yellow-700">- {option}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        );
+      case ContentType.Interactive:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            <div className="p-6 bg-purple-50 border border-purple-100 rounded-lg text-center">
+              <p className="text-purple-800">Interactive content coming soon!</p>
+            </div>
+          </div>
+        );
+      case ContentType.Fact:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex items-start space-x-3">
+              <Lightbulb className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-medium text-green-800">Did You Know?</h3>
+                <p className="text-green-700">{content.content as string}</p>
+              </div>
+            </div>
+          </div>
+        );
       default:
+        if (typeof content.content === 'string') {
+          return (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <ReactMarkdown className="prose max-w-none">{content.content}</ReactMarkdown>
+              </div>
+            </div>
+          );
+        }
         return <p>Unsupported content type</p>;
     }
   };
@@ -239,7 +269,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
               >
                 <p className="text-left">
                   <span className="font-medium">Hint:</span> {
-                    (content.content as Challenge).explanation || // Cast to Challenge
+                    (content.content as Challenge).explanation || 
                     'Think carefully about the question and try to eliminate obviously wrong answers first.'
                   }
                 </p>
