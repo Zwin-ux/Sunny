@@ -16,7 +16,7 @@ export class LessonLoader {
    * @returns A minimal default lesson
    */
   public static getFallbackLesson(filePath: string): Lesson {
-    const filename = path.basename(filePath, path.extname(filePath));
+    const filename = path ? path.basename(filePath, path.extname(filePath)) : 'fallback-lesson';
     return {
       id: filename,
       title: 'Browser Fallback Lesson',
@@ -216,28 +216,36 @@ export class LessonLoader {
    */
   public static loadLessonsFromDirectory(dirPath: string): Lesson[] {
     try {
+      // Check if we're in a server environment
+      if (!fs || !path) {
+        console.warn('Attempted to load lessons from directory in browser environment');
+        return [];
+      }
+
       const lessons: Lesson[] = [];
-      
+
       // Read all files in the directory
       const files = fs.readdirSync(dirPath);
       console.log(`Files in directory ${dirPath}:`, files);
-      if (!files) {
-        console.error(`fs.readdirSync returned undefined for directory: ${dirPath}`);
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        console.warn(`No files found or fs.readdirSync returned invalid data for directory: ${dirPath}`);
         return [];
       }
-      
+
       // Process each file based on extension
       files.forEach((file: string) => {
+        if (!file) return;
+
         const filePath = path.join(dirPath, file);
         const ext = path.extname(file).toLowerCase();
-        
+
         if (ext === '.md') {
           lessons.push(this.loadMarkdownLesson(filePath));
         } else if (ext === '.json') {
           lessons.push(this.loadJsonLesson(filePath));
         }
       });
-      
+
       return lessons;
     } catch (error) {
       console.error(`Error loading lessons from directory ${dirPath}:`, error);

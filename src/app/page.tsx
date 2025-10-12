@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense, Dispatch, SetStateAction } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 
@@ -126,7 +125,7 @@ function Chat() {
   // State for recommended lessons in demo mode
   const [recommendedLessons, setRecommendedLessons] = useState<Lesson[]>([]);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -170,7 +169,7 @@ function Chat() {
     if (typeof window === 'undefined' || !voiceMode) return;
 
     speechSynthesisRef.current = window.speechSynthesis;
-    const SpeechRecognitionImpl = window.SpeechRecognition;
+    const SpeechRecognitionImpl = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognitionImpl) {
       setVoiceError("Speech recognition not supported in this browser.");
@@ -183,19 +182,28 @@ function Chat() {
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = Array.from(event.results).map((r: any) => r[0].transcript).join('');
-        setInput(transcript);
+      recognition.onresult = (event: any) => {
+        const results = event.results;
+        if (results && results.length > 0) {
+          const transcript = Array.from(results).map((r: any) => r[0]?.transcript || '').join('');
+          setInput(transcript);
+        }
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setVoiceError(`Speech error: ${event.error}`);
         setIsListening(false);
       };
 
       recognition.onend = () => {
-        if (isListening) recognition.start();
+        if (isListening) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.error('Error restarting recognition:', e);
+          }
+        }
       };
 
       recognitionRef.current = recognition;
@@ -636,9 +644,6 @@ function Chat() {
 }
 
 export default function Home() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  
   return (
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center h-screen">
@@ -648,7 +653,7 @@ export default function Home() {
         <div className="text-2xl font-bold">Loading Sunny...</div>
         <div className="mt-2 text-gray-600">Your friendly AI tutor is getting ready!</div>
       </div>
-    }> 
+    }>
       <Chat />
     </Suspense>
   );

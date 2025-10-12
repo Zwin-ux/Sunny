@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Lesson, LearningProgress, StudentProgress, ContentType } from '../types/lesson';
-import LessonRepository from '../lib/lessons/LessonRepository';
+// Lazy import to avoid build-time initialization issues
+// import LessonRepository from '../lib/lessons/LessonRepository';
 
 type LearningSessionContextType = {
   currentLesson: Lesson | null;
@@ -75,6 +76,8 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
   }, [progress]);
 
   const startLesson = (lessonId: string) => {
+    // Lazy load LessonRepository to avoid build-time issues
+    const LessonRepository = require('../lib/lessons/LessonRepository').default;
     const lesson = LessonRepository.getLesson(lessonId);
     if (!lesson) return;
 
@@ -157,13 +160,14 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
   };
 
   const calculateLessonProgress = (lesson: Lesson, answers: Record<string, { answer: string | string[]; isCorrect: boolean; submittedAt: string }>): number => {
+    if (!lesson.content || !Array.isArray(lesson.content)) return 0;
     const totalContent = lesson.content.length;
     const completedContent = Object.values(answers).filter(answer => answer.isCorrect).length;
     return totalContent > 0 ? (completedContent / totalContent) * 100 : 0;
   };
 
   const goToNextContent = () => {
-    if (!currentLesson) return;
+    if (!currentLesson || !currentLesson.content || !Array.isArray(currentLesson.content)) return;
     if (currentContentIndex < currentLesson.content.length - 1) {
       setCurrentContentIndex(prev => prev + 1);
     }

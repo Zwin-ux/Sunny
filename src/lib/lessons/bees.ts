@@ -13,7 +13,7 @@ const beeMedia: MediaContent[] = [
     altText: 'Honeybee waggle dance',
     caption: 'Honeybees perform a waggle dance to communicate the location of food sources.'
   }
-];
+] as MediaContent[];
 
 const beeQuiz: QuizQuestion[] = [
   {
@@ -65,7 +65,7 @@ const beeLesson: Lesson = {
       content: 'Bees are flying insects closely related to wasps and ants, known for their role in pollination and, in the case of the best-known bee species, the western honey bee, for producing honey.',
       difficulty: 'beginner',
       estimatedDuration: 5,
-      media: [beeMedia[0]]
+      media: beeMedia && beeMedia[0] ? [beeMedia[0]] : []
     },
     {
       id: 'types',
@@ -74,7 +74,7 @@ const beeLesson: Lesson = {
       content: 'There are over 16,000 known species of bees in seven recognized biological families. Some species – including honey bees, bumblebees, and stingless bees – live socially in colonies while most species are solitary.',
       difficulty: 'beginner',
       estimatedDuration: 5,
-      media: [beeMedia[1]]
+      media: beeMedia && beeMedia[1] ? [beeMedia[1]] : []
     },
     {
       id: 'hive-life',
@@ -83,7 +83,7 @@ const beeLesson: Lesson = {
       content: 'A typical honeybee hive contains one queen, hundreds of male drones, and thousands of female worker bees. Each has specific roles in maintaining the hive and ensuring the survival of the colony.',
       difficulty: 'intermediate',
       estimatedDuration: 10,
-      media: [beeMedia[0]]
+      media: beeMedia && beeMedia[0] ? [beeMedia[0]] : []
     },
     {
       id: 'quiz',
@@ -100,7 +100,7 @@ const beeLesson: Lesson = {
       content: 'A single honeybee typically visits 50-100 flowers during a single collection trip and can make about 1/12 of a teaspoon of honey in its lifetime!',
       difficulty: 'beginner',
       estimatedDuration: 3,
-      media: [beeMedia[1]]
+      media: beeMedia && beeMedia[1] ? [beeMedia[1]] : []
     }
   ],
   createdAt: '2023-01-01T00:00:00Z',

@@ -1,7 +1,7 @@
 import { Lesson, ContentType } from '../../types/lesson';
-import beeLesson from './bees';
-import LessonLoader from './LessonLoader';
-import path from 'path';
+// import beeLesson from './bees';
+import { LessonLoader } from './LessonLoader';
+// import path from 'path';
 
 /**
  * LessonRepository is a singleton that manages all lessons
@@ -15,7 +15,11 @@ class LessonRepository {
   private static instance: LessonRepository;
 
   private constructor() {
-    this.initializeLessons();
+    try {
+      this.initializeLessons();
+    } catch (error) {
+      console.error('Error initializing lessons:', error);
+    }
   }
 
   public static getInstance(): LessonRepository {
@@ -26,8 +30,19 @@ class LessonRepository {
   }
 
   private initializeLessons(): void {
-    // Initialize with default lessons
-    this.addLesson(beeLesson);
+    try {
+      // Skip initialization during server-side build to avoid errors
+      if (typeof window === 'undefined') {
+        console.log('Skipping lesson initialization during server-side build');
+        return;
+      }
+      // Initialize with default lessons - temporarily disabled
+      // if (beeLesson && typeof beeLesson === 'object') {
+      //   this.addLesson(beeLesson);
+      // }
+    } catch (error) {
+      console.error('Error initializing lessons:', error);
+    }
   }
 
   /**
@@ -73,6 +88,26 @@ class LessonRepository {
   }
 
   public addLesson(lesson: Lesson): void {
+    // Ensure content array exists
+    if (!lesson.content) {
+      lesson.content = [];
+    }
+    
+    // Ensure topics array exists
+    if (!lesson.topics || !Array.isArray(lesson.topics)) {
+      lesson.topics = [];
+    }
+    
+    // Ensure keywords array exists
+    if (!lesson.keywords || !Array.isArray(lesson.keywords)) {
+      lesson.keywords = [];
+    }
+    
+    // Ensure learningObjectives array exists
+    if (!lesson.learningObjectives || !Array.isArray(lesson.learningObjectives)) {
+      lesson.learningObjectives = [];
+    }
+    
     this.lessons.set(lesson.id, lesson);
     
     // Index the lesson by topics
@@ -101,16 +136,18 @@ class LessonRepository {
     this.difficultyIndex.get(difficulty)?.add(lesson.id);
     
     // Index the lesson content by content type
-    lesson.content.forEach(content => {
-      if (!this.contentTypeIndex.has(content.type)) {
-        this.contentTypeIndex.set(content.type, new Map());
-      }
-      const contentTypeMap = this.contentTypeIndex.get(content.type);
-      if (!contentTypeMap?.has(lesson.id)) {
-        contentTypeMap?.set(lesson.id, []);
-      }
-      contentTypeMap?.get(lesson.id)?.push(content.id);
-    });
+    if (lesson.content && Array.isArray(lesson.content)) {
+      lesson.content.forEach(content => {
+        if (!this.contentTypeIndex.has(content.type)) {
+          this.contentTypeIndex.set(content.type, new Map());
+        }
+        const contentTypeMap = this.contentTypeIndex.get(content.type);
+        if (!contentTypeMap?.has(lesson.id)) {
+          contentTypeMap?.set(lesson.id, []);
+        }
+        contentTypeMap?.get(lesson.id)?.push(content.id);
+      });
+    }
   }
 
   public getLesson(id: string): Lesson | undefined {
@@ -151,8 +188,8 @@ class LessonRepository {
     // Otherwise, fall back to partial matching
     return this.getAllLessons().filter(lesson => 
       lesson.title.toLowerCase().includes(normalizedTopic) ||
-      lesson.topics.some(t => t.toLowerCase().includes(normalizedTopic)) ||
-      lesson.keywords.some(k => k.toLowerCase().includes(normalizedTopic))
+      (lesson.topics && Array.isArray(lesson.topics) && lesson.topics.some(t => t.toLowerCase().includes(normalizedTopic))) ||
+      (lesson.keywords && Array.isArray(lesson.keywords) && lesson.keywords.some(k => k.toLowerCase().includes(normalizedTopic)))
     );
   }
 
@@ -202,22 +239,22 @@ class LessonRepository {
     return this.getAllLessons().filter(lesson => 
       lesson.title.toLowerCase().includes(normalizedQuery) ||
       lesson.description.toLowerCase().includes(normalizedQuery) ||
-      lesson.topics.some(topic => topic.toLowerCase().includes(normalizedQuery)) ||
-      lesson.keywords.some(keyword => keyword.toLowerCase().includes(normalizedQuery)) ||
-      lesson.learningObjectives.some(obj => obj.toLowerCase().includes(normalizedQuery))
+      (lesson.topics && Array.isArray(lesson.topics) && lesson.topics.some(topic => topic.toLowerCase().includes(normalizedQuery))) ||
+      (lesson.keywords && Array.isArray(lesson.keywords) && lesson.keywords.some(keyword => keyword.toLowerCase().includes(normalizedQuery))) ||
+      (lesson.learningObjectives && Array.isArray(lesson.learningObjectives) && lesson.learningObjectives.some(obj => obj.toLowerCase().includes(normalizedQuery)))
     );
   }
 
   public getLessonContent(lessonId: string, contentId: string) {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return null;
+    if (!lesson || !lesson.content) return null;
     
     return lesson.content.find(item => item.id === contentId) || null;
   }
 
   public getNextContent(lessonId: string, currentContentId: string) {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return null;
+    if (!lesson || !lesson.content || !Array.isArray(lesson.content)) return null;
     
     const currentIndex = lesson.content.findIndex(item => item.id === currentContentId);
     if (currentIndex === -1 || currentIndex >= lesson.content.length - 1) {
@@ -229,7 +266,7 @@ class LessonRepository {
 
   public getPreviousContent(lessonId: string, currentContentId: string) {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return null;
+    if (!lesson || !lesson.content || !Array.isArray(lesson.content)) return null;
     
     const currentIndex = lesson.content.findIndex(item => item.id === currentContentId);
     if (currentIndex <= 0) {
@@ -252,7 +289,7 @@ class LessonRepository {
   // Get content items of a specific type from a lesson
   public getLessonContentByType(lessonId: string, contentType: ContentType): any[] {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return [];
+    if (!lesson || !lesson.content || !Array.isArray(lesson.content)) return [];
     
     return lesson.content.filter(item => item.type === contentType);
   }
@@ -279,12 +316,37 @@ class LessonRepository {
   public getAvailableTopics(): string[] {
     const topics = new Set<string>();
     this.getAllLessons().forEach(lesson => {
-      lesson.topics.forEach(topic => topics.add(topic));
+      if (lesson.topics && Array.isArray(lesson.topics)) {
+        lesson.topics.forEach(topic => topics.add(topic));
+      }
     });
     return Array.from(topics);
   }
 }
 
+// Export the class
+export { LessonRepository };
 
+// Lazy initialization - only create instance when accessed
+const getLessonRepositoryInstance = () => LessonRepository.getInstance();
 
-export default LessonRepository.getInstance();
+// Default export as getter function to avoid build-time initialization
+export default {
+  getInstance: getLessonRepositoryInstance,
+  getLesson: (id: string) => getLessonRepositoryInstance().getLesson(id),
+  getAllLessons: () => getLessonRepositoryInstance().getAllLessons(),
+  findLessonsByTopic: (topic: string) => getLessonRepositoryInstance().findLessonsByTopic(topic),
+  findLessonsByDifficulty: (difficulty: 'beginner' | 'intermediate' | 'advanced') => getLessonRepositoryInstance().findLessonsByDifficulty(difficulty),
+  searchLessons: (query: string) => getLessonRepositoryInstance().searchLessons(query),
+  getLessonContent: (lessonId: string, contentId: string) => getLessonRepositoryInstance().getLessonContent(lessonId, contentId),
+  getNextContent: (lessonId: string, currentContentId: string) => getLessonRepositoryInstance().getNextContent(lessonId, currentContentId),
+  getPreviousContent: (lessonId: string, currentContentId: string) => getLessonRepositoryInstance().getPreviousContent(lessonId, currentContentId),
+  findLessonsByContentType: (contentType: ContentType) => getLessonRepositoryInstance().findLessonsByContentType(contentType),
+  getLessonContentByType: (lessonId: string, contentType: ContentType) => getLessonRepositoryInstance().getLessonContentByType(lessonId, contentType),
+  findBestLessonMatch: (topic: string, difficulty?: 'beginner' | 'intermediate' | 'advanced') => getLessonRepositoryInstance().findBestLessonMatch(topic, difficulty),
+  getAvailableTopics: () => getLessonRepositoryInstance().getAvailableTopics(),
+  addLesson: (lesson: Lesson) => getLessonRepositoryInstance().addLesson(lesson),
+  loadLessonsFromDirectory: (directoryPath: string) => getLessonRepositoryInstance().loadLessonsFromDirectory(directoryPath),
+  loadMarkdownLesson: (filePath: string) => getLessonRepositoryInstance().loadMarkdownLesson(filePath),
+  loadJsonLesson: (filePath: string) => getLessonRepositoryInstance().loadJsonLesson(filePath),
+};

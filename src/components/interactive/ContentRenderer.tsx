@@ -118,7 +118,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
-            {!content.media || content.media.length === 0 ? (
+            {!content.media || !Array.isArray(content.media) || content.media.length === 0 ? (
               <div className="p-6 bg-gray-100 rounded-lg text-center border border-gray-200">
                 <div className="flex justify-center mb-3">
                   {content.type === ContentType.Video ? (
@@ -192,7 +192,9 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <ReactMarkdown className="prose max-w-none">{content.content}</ReactMarkdown>
+                <div className="prose max-w-none">
+                  <ReactMarkdown>{content.content}</ReactMarkdown>
+                </div>
               </div>
             </div>
           );
@@ -228,6 +230,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
                 aria-label="Previous content"
               >
                 <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous</span>
               </button>
               
               <div className="flex items-center space-x-2">
@@ -239,6 +242,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
                     aria-label="Next content"
                   >
                     <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Next</span>
                   </button>
                 )}
               </div>
@@ -255,6 +259,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             onClick={() => setShowExplanation(!showExplanation)}
             className="mt-2 px-3 py-1 bg-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-300 transition-colors"
             title="Toggle explanation"
+            aria-label={showExplanation ? "Hide explanation" : "Show explanation or hint"}
           >
             {showExplanation ? 'Hide explanation' : 'Need help with this question?'}
           </motion.button>

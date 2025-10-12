@@ -12,6 +12,7 @@ import {
   UserMessage,
   AssistantMessage,
 } from '../types/chat';
+import { globalAgentManager } from './agents';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -339,6 +340,171 @@ export async function generateFeedback(
   } catch (error) {
     console.error('Error generating feedback from OpenAI:', error);
     return 'Great effort! Keep learning!';
+  }
+}
+
+/**
+ * Enhanced Sunny Response Generation using the Agentic Learning Engine
+ * This function provides intelligent, adaptive responses by leveraging multiple AI agents
+ */
+export async function generateAgenticSunnyResponse(
+  message: string,
+  studentProfile: StudentProfile,
+  studentId: string = 'default'
+): Promise<{ response: string; actions: string[] }> {
+  try {
+    // Initialize agent manager if not already done
+    await globalAgentManager.initialize();
+
+    // Process the message through the agentic system
+    const result = await globalAgentManager.processStudentMessage(
+      studentId,
+      message,
+      studentProfile
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Error in agentic response generation:', error);
+    
+    // Fallback to traditional response generation
+    console.log('Falling back to traditional response generation');
+    
+    // Create a simple fallback response
+    const fallbackResponse = await generateTraditionalResponse(message, studentProfile);
+    
+    return {
+      response: fallbackResponse,
+      actions: ['fallback_used']
+    };
+  }
+}
+
+/**
+ * Traditional response generation as fallback
+ */
+async function generateTraditionalResponse(
+  message: string,
+  studentProfile: StudentProfile
+): Promise<string> {
+  const { name, emotion, learningStyle, difficulty } = studentProfile;
+
+  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your goal is to make learning fun, engaging, and accessible. You are talking to ${name}, who is feeling ${emotion} today.
+
+Your teaching approach must be adaptive and nurturing. Follow these principles:
+1. Be a friendly, patient, and curious robot friend. Use simple language, short sentences, and plenty of emojis. ✨
+2. Always be positive. Praise effort, not just correct answers.
+3. Adapt to the student's learning style: ${learningStyle}
+4. Adjust difficulty to: ${difficulty}
+5. Keep it interactive with questions
+6. Offer mini-challenges when appropriate
+
+Keep your responses concise and focused. Aim for just 2-3 sentences per message.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [
+        { role: 'system', content: systemMessageContent },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 200,
+    });
+
+    return response.choices[0].message?.content || "Hi there! I'm here to help you learn! What would you like to explore today? ✨";
+  } catch (error) {
+    console.error('Error in traditional response generation:', error);
+    return "Hi there! I'm Sunny, and I'm excited to learn with you! What would you like to talk about? 🌟";
+  }
+}
+
+/**
+ * Generate personalized learning content using the agent system
+ */
+export async function generatePersonalizedContent(
+  studentId: string,
+  topic: string,
+  contentType: 'quiz' | 'lesson' | 'activity' = 'lesson'
+): Promise<any> {
+  try {
+    await globalAgentManager.initialize();
+    
+    const content = await globalAgentManager.generatePersonalizedContent(
+      studentId,
+      topic,
+      contentType
+    );
+    
+    return content;
+  } catch (error) {
+    console.error('Error generating personalized content:', error);
+    
+    // Fallback to existing challenge generation for quizzes
+    if (contentType === 'quiz') {
+      return await generateMiniChallenge(topic);
+    }
+    
+    // Simple fallback content
+    return {
+      type: contentType,
+      topic,
+      content: `Let's explore ${topic} together! This is an exciting topic with lots to discover.`,
+      generated: false,
+      fallback: true
+    };
+  }
+}
+
+/**
+ * Update student progress in the agent system
+ */
+export async function updateStudentProgress(
+  studentId: string,
+  activity: string,
+  performance: {
+    correct?: boolean;
+    timeSpent?: number;
+    difficulty?: DifficultyLevel;
+    engagement?: number;
+  }
+): Promise<void> {
+  try {
+    await globalAgentManager.initialize();
+    await globalAgentManager.updateStudentProgress(studentId, activity, performance);
+  } catch (error) {
+    console.error('Error updating student progress:', error);
+  }
+}
+
+/**
+ * Get learning insights for a student
+ */
+export async function getStudentLearningInsights(studentId: string): Promise<any> {
+  try {
+    await globalAgentManager.initialize();
+    const learningState = globalAgentManager.getLearningState(studentId);
+    
+    if (!learningState) {
+      return {
+        hasData: false,
+        message: 'No learning data available yet. Start learning to see insights!'
+      };
+    }
+    
+    return {
+      hasData: true,
+      engagement: learningState.engagementMetrics,
+      progress: learningState.currentObjectives,
+      knowledgeGaps: learningState.knowledgeMap.knowledgeGaps,
+      recommendations: 'Continue practicing to improve!'
+    };
+  } catch (error) {
+    console.error('Error getting learning insights:', error);
+    return {
+      hasData: false,
+      error: 'Unable to retrieve learning insights'
+    };
   }
 }
 

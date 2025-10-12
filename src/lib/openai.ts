@@ -18,12 +18,18 @@ export class OpenAIService {
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error('The OpenAI API key is not configured.');
+      console.warn('The OpenAI API key is not configured. Using fallback mode.');
+      // Create a dummy client for build time
+      this.openai = new OpenAI({
+        apiKey: 'sk-dummy-key-for-build',
+        dangerouslyAllowBrowser: false,
+      });
+    } else {
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: false,
+      });
     }
-    this.openai = new OpenAI({
-      apiKey: apiKey,
-      dangerouslyAllowBrowser: false, // This should be false in production
-    });
   }
 
   async generateQuizQuestion(

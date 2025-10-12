@@ -80,13 +80,13 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
 
     onNewMessage(createAssistantTextMessage(`Let's learn about ${lesson.title}! ${lesson.description}`));
 
-    if (lesson.content.length > 0) {
+    if (lesson.content && Array.isArray(lesson.content) && lesson.content.length > 0) {
       onNewMessage(createMessageFromContent(lesson.content[0]));
     }
   }, [onNewMessage, startLesson]);
 
   const handleNext = useCallback(() => {
-    if (!currentLessonState || currentContentIndex >= currentLessonState.lesson.content.length - 1) {
+    if (!currentLessonState || !currentLessonState.lesson.content || !Array.isArray(currentLessonState.lesson.content) || currentContentIndex >= currentLessonState.lesson.content.length - 1) {
       if (currentLessonState) {
         completeLesson();
         onNewMessage(createAssistantTextMessage("Great job completing the lesson! What would you like to learn about next?"));
