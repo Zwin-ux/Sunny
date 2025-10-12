@@ -1,8 +1,11 @@
-import { getServerSession as originalGetServerSession } from "next-auth";
-import { authOptions } from '../app/api/auth/[...nextauth]/route';
+// Auth module - placeholder for NextAuth integration
+// TODO: Set up NextAuth when authentication is needed
 
 export async function getServerSession() {
-  return originalGetServerSession(authOptions);
+  // Placeholder - return null when no auth is configured
+  return null;
 }
 
-export { authOptions } from '../app/api/auth/[...nextauth]/route';
+export const authOptions = {
+  // Placeholder auth options
+};

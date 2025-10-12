@@ -35,7 +35,6 @@ export class AssessmentAgent extends BaseAgent {
 
   async initialize(): Promise<void> {
     console.log('Assessment Agent initialized');
-    this.status = 'active';
   }
 
   async processMessage(message: any): Promise<any> {
@@ -68,7 +67,6 @@ export class AssessmentAgent extends BaseAgent {
 
   async shutdown(): Promise<void> {
     console.log('Assessment Agent shutting down');
-    this.status = 'idle';
   }
 
   /**
@@ -151,8 +149,8 @@ export class AssessmentAgent extends BaseAgent {
 
     // Combine metrics
     return Math.min(1, (
-      engagement.interactionRate * 0.3 +
-      engagement.responseQuality * 0.3 +
+      (engagement.interactionRate || 0) * 0.3 +
+      (engagement.responseQuality || 0) * 0.3 +
       activityBonus * 0.2 +
       lengthBonus * 0.2
     ));
@@ -210,6 +208,7 @@ export class AssessmentAgent extends BaseAgent {
           mastery.attempts >= this.MIN_ATTEMPTS_FOR_ASSESSMENT) {
 
         gaps.push({
+          conceptId: concept,
           concept,
           severity: this.calculateGapSeverity(mastery.masteryLevel),
           detectedAt: Date.now(),
@@ -239,7 +238,7 @@ export class AssessmentAgent extends BaseAgent {
 
       mastery[concept] = {
         concept,
-        masteryLevel: knowledge.masteryLevel,
+        masteryLevel: knowledge.masteryLevel || 0,
         lastAssessed: knowledge.lastReviewed || Date.now(),
         attempts,
         successRate
@@ -274,7 +273,7 @@ export class AssessmentAgent extends BaseAgent {
     const related: string[] = [];
 
     for (const [otherConcept, knowledge] of Object.entries(learningState.knowledgeMap.concepts)) {
-      if (otherConcept !== concept && knowledge.masteryLevel < this.MASTERY_THRESHOLD) {
+      if (otherConcept !== concept && (knowledge.masteryLevel || 0) < this.MASTERY_THRESHOLD) {
         related.push(otherConcept);
       }
     }
@@ -310,12 +309,17 @@ export class AssessmentAgent extends BaseAgent {
 
     // Check if student is struggling with current topic but hasn't mastered prerequisites
     for (const gap of learningState.knowledgeMap.knowledgeGaps) {
-      if (gap.severity > 0.7) {
+      const severityNum = typeof gap.severity === 'number' ? gap.severity :
+                          gap.severity === 'critical' ? 1.0 :
+                          gap.severity === 'major' ? 0.8 :
+                          gap.severity === 'moderate' ? 0.5 : 0.3;
+      if (severityNum > 0.7) {
         gaps.push({
-          concept: `prerequisite_for_${gap.concept}`,
-          severity: gap.severity * 0.8,
+          conceptId: gap.conceptId,
+          concept: `prerequisite_for_${gap.conceptId}`,
+          severity: severityNum * 0.8,
           detectedAt: Date.now(),
-          relatedConcepts: [gap.concept],
+          relatedConcepts: [gap.conceptId],
           suggestedActions: ['review_prerequisites', 'scaffolding']
         });
       }
@@ -402,7 +406,11 @@ export class AssessmentAgent extends BaseAgent {
 
     // Gap remediation
     for (const gap of gaps) {
-      if (gap.severity > 0.7) {
+      const severityNum = typeof gap.severity === 'number' ? gap.severity :
+                          gap.severity === 'critical' ? 1.0 :
+                          gap.severity === 'major' ? 0.8 :
+                          gap.severity === 'moderate' ? 0.5 : 0.3;
+      if (severityNum > 0.7) {
         recommendations.push(`address_gap:${gap.concept}`);
       }
     }

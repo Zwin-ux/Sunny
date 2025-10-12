@@ -38,7 +38,6 @@ export class PathPlannerAgent extends BaseAgent {
 
   async initialize(): Promise<void> {
     console.log('Path Planner Agent initialized');
-    this.status = 'active';
   }
 
   async processMessage(message: any): Promise<any> {
@@ -73,7 +72,6 @@ export class PathPlannerAgent extends BaseAgent {
 
   async shutdown(): Promise<void> {
     console.log('Path Planner Agent shutting down');
-    this.status = 'idle';
   }
 
   /**
@@ -281,7 +279,7 @@ export class PathPlannerAgent extends BaseAgent {
     // Check which concepts student already knows
     const knownConcepts = new Set(
       Object.entries(learningState.knowledgeMap.concepts)
-        .filter(([_, knowledge]) => knowledge.masteryLevel > 0.7)
+        .filter(([_, knowledge]) => (knowledge.masteryLevel || 0) > 0.7)
         .map(([concept]) => concept)
     );
 
@@ -325,11 +323,12 @@ export class PathPlannerAgent extends BaseAgent {
     concept: string,
     learningState: LearningState
   ): DifficultyLevel {
-    const knowledge = learningState.knowledgeMap.concepts[concept];
+    const knowledge = learningState.knowledgeMap.concepts[concept as any];
+    const masteryLevel = knowledge?.masteryLevel || 0;
 
-    if (!knowledge || knowledge.masteryLevel < 0.3) {
+    if (!knowledge || masteryLevel < 0.3) {
       return 'easy';
-    } else if (knowledge.masteryLevel < 0.7) {
+    } else if (masteryLevel < 0.7) {
       return 'medium';
     } else {
       return 'hard';
@@ -408,8 +407,9 @@ export class PathPlannerAgent extends BaseAgent {
   private skipRedundantNodes(path: LearningPath, learningState: LearningState): void {
     // Mark mastered concepts as skipped
     for (const node of path.nodes) {
-      const knowledge = learningState.knowledgeMap.concepts[node.concept];
-      if (knowledge && knowledge.masteryLevel > 0.8 && node.status === 'pending') {
+      const knowledge = learningState.knowledgeMap.concepts[node.concept as any];
+      const masteryLevel = knowledge?.masteryLevel || 0;
+      if (knowledge && masteryLevel > 0.8 && node.status === 'pending') {
         node.status = 'skipped';
       }
     }
@@ -470,7 +470,7 @@ export class PathPlannerAgent extends BaseAgent {
    * Adjust difficulty of upcoming nodes
    */
   private adjustDifficulty(path: LearningPath, learningState: LearningState): void {
-    const currentPerformance = learningState.engagementMetrics.responseQuality;
+    const currentPerformance = learningState.engagementMetrics.responseQuality || 0.5;
 
     for (const node of path.nodes) {
       if (node.status === 'pending') {

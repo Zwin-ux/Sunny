@@ -34,7 +34,6 @@ export class InterventionAgent extends BaseAgent {
 
   async initialize(): Promise<void> {
     console.log('Intervention Agent initialized');
-    this.status = 'active';
   }
 
   async processMessage(message: any): Promise<any> {
@@ -76,7 +75,6 @@ export class InterventionAgent extends BaseAgent {
 
   async shutdown(): Promise<void> {
     console.log('Intervention Agent shutting down');
-    this.status = 'idle';
   }
 
   /**
@@ -180,13 +178,13 @@ export class InterventionAgent extends BaseAgent {
     const engagement = learningState.engagementMetrics;
 
     // Low interaction rate
-    if (engagement.interactionRate < 0.3) {
+    if ((engagement.interactionRate || 0) < 0.3) {
       indicators.push('low_interaction_rate');
       severity += 0.3;
     }
 
     // Short responses
-    if (engagement.responseQuality < 0.4) {
+    if ((engagement.responseQuality || 0) < 0.4) {
       indicators.push('low_response_quality');
       severity += 0.25;
     }
@@ -199,7 +197,7 @@ export class InterventionAgent extends BaseAgent {
     }
 
     // Declining session duration
-    if (engagement.focusLevel < 0.3) {
+    if ((engagement.focusLevel || 0) < 0.3) {
       indicators.push('low_focus');
       severity += 0.3;
     }
@@ -267,7 +265,7 @@ export class InterventionAgent extends BaseAgent {
     let severity = 0;
 
     // Long session duration
-    const sessionDuration = (Date.now() - learningState.sessionStartTime) / (1000 * 60); // minutes
+    const sessionDuration = (Date.now() - (learningState.sessionStartTime || Date.now())) / (1000 * 60); // minutes
     if (sessionDuration > 45) {
       indicators.push('long_session');
       severity += 0.3;
@@ -280,7 +278,7 @@ export class InterventionAgent extends BaseAgent {
     }
 
     // Slower response times over session
-    if (learningState.engagementMetrics.responseQuality < 0.3) {
+    if ((learningState.engagementMetrics.responseQuality || 0) < 0.3) {
       indicators.push('declining_quality');
       severity += 0.3;
     }

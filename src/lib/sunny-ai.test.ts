@@ -37,13 +37,13 @@ describe('sunny-ai', () => {
       mockOpenAI.chat.completions.create.mockResolvedValue(mockStream);
 
       const conversation = [
-        { role: 'user', content: 'Hi Sunny!', id: '1', timestamp: 123, name: 'User' },
+        { role: 'user' as const, content: 'Hi Sunny!', id: '1', timestamp: 123, name: 'User', type: 'user' as const },
       ];
       const studentProfile = {
         name: 'TestKid',
         emotion: 'happy',
-        learningStyle: 'visual',
-        difficulty: 'easy',
+        learningStyle: 'visual' as const,
+        difficulty: 'easy' as const,
         level: 1,
         points: 0,
         completedLessons: [],
@@ -66,13 +66,13 @@ describe('sunny-ai', () => {
       mockOpenAI.chat.completions.create.mockRejectedValue(new Error('API Error'));
 
       const conversation = [
-        { role: 'user', content: 'Hi Sunny!', id: '1', timestamp: 123, name: 'User' },
+        { role: 'user' as const, content: 'Hi Sunny!', id: '1', timestamp: 123, name: 'User', type: 'user' as const },
       ];
       const studentProfile = {
         name: 'TestKid',
         emotion: 'happy',
-        learningStyle: 'visual',
-        difficulty: 'easy',
+        learningStyle: 'visual' as const,
+        difficulty: 'easy' as const,
         level: 1,
         points: 0,
         completedLessons: [],

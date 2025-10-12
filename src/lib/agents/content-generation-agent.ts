@@ -43,7 +43,6 @@ export class ContentGenerationAgent extends BaseAgent {
 
   async initialize(): Promise<void> {
     console.log('Content Generation Agent initialized');
-    this.status = 'active';
   }
 
   async processMessage(message: any): Promise<any> {
@@ -82,7 +81,6 @@ export class ContentGenerationAgent extends BaseAgent {
 
   async shutdown(): Promise<void> {
     console.log('Content Generation Agent shutting down');
-    this.status = 'idle';
   }
 
   /**
@@ -264,8 +262,8 @@ export class ContentGenerationAgent extends BaseAgent {
 
     // Add related concepts that need review
     for (const gap of learningState.knowledgeMap.knowledgeGaps) {
-      if (gap.relatedConcepts.includes(topic) && !concepts.includes(gap.concept)) {
-        concepts.push(gap.concept);
+      if (gap.relatedConcepts?.includes(topic) && gap.conceptId && !concepts.includes(gap.conceptId)) {
+        concepts.push(gap.conceptId);
       }
     }
 

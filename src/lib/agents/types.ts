@@ -1,5 +1,5 @@
 // Core types for the Agentic Learning Engine
-import { LearningStyle, DifficultyLevel, StudentProfile } from '../types/chat';
+import { LearningStyle, DifficultyLevel, StudentProfile } from '@/types/chat';
 
 export type AgentType = 
   | 'assessment' 
@@ -59,6 +59,10 @@ export interface LearningState {
   currentActivity?: Activity;
   contextHistory: ContextEntry[];
   lastUpdated: number;
+  lastActivityTimestamp?: number;
+  currentDifficulty?: DifficultyLevel;
+  sessionStartTime?: number;
+  recentAchievements?: string[];
 }
 
 export interface LearningObjective {
@@ -87,6 +91,9 @@ export interface Concept {
   difficulty: DifficultyLevel;
   prerequisites: string[];
   relatedConcepts: string[];
+  interactions?: any[];
+  masteryLevel?: number;
+  lastReviewed?: number;
 }
 
 export interface ConceptRelationship {
@@ -106,11 +113,16 @@ export interface MasteryLevel {
 
 export interface Gap {
   conceptId: string;
-  severity: 'minor' | 'moderate' | 'major' | 'critical';
-  description: string;
+  severity: 'minor' | 'moderate' | 'major' | 'critical' | number;
+  description?: string;
   suggestedActions: string[];
   detectedAt: number;
+  concept?: string;
+  relatedConcepts?: string[];
 }
+
+// Alias for backwards compatibility
+export type KnowledgeGap = Gap;
 
 export interface AssessmentEvidence {
   type: 'response' | 'time' | 'pattern' | 'behavior';
@@ -129,6 +141,9 @@ export interface EngagementData {
   motivationLevel: number; // 0-1 motivation indicator
   preferredActivityTypes: ActivityType[];
   engagementHistory: EngagementPoint[];
+  interactionRate?: number;
+  responseQuality?: number;
+  focusLevel?: number;
 }
 
 export interface EngagementPoint {
