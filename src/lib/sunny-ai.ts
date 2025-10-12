@@ -1,10 +1,10 @@
 import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  SunnyChatMessage, 
-  MessageType, 
-  LearningStyle, 
+import {
+  SunnyChatMessage,
+  MessageType,
+  LearningStyle,
   DifficultyLevel,
   TeachingStrategy as TeachingStrategyType,
   StudentProfile,
@@ -13,10 +13,28 @@ import {
   AssistantMessage,
 } from '../types/chat';
 import { globalAgentManager } from './agents';
+import { isDemoMode } from './demo-mode';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-load OpenAI client to avoid initialization errors when API key is missing
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (isDemoMode()) {
+    throw new Error('Demo mode active - OpenAI client not available');
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY environment variable is not set');
+  }
+
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  return openaiClient;
+}
 
 type TeachingStrategyKey = 'scaffolding' | 'discovery' | 'mastery';
 type KnowledgeLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
@@ -166,7 +184,8 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
   ];
 
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: messagesForApi,
       temperature: 0.7,
@@ -178,10 +197,14 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
 
   } catch (error) {
     console.error('Error streaming response from OpenAI:', error);
-    // Create a new stream with an error message
+    // Create a new stream with a friendly error message
+    const fallbackMessage = isDemoMode()
+      ? "Hi! I'm running in demo mode right now. I can still chat with you using pre-made responses! 😊"
+      : 'Oops! I had trouble connecting. Let me try to help you another way! 🌟';
+
     return new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode('Error: Could not connect to Sunny. Please try again.'));
+        controller.enqueue(new TextEncoder().encode(fallbackMessage));
         controller.close();
       }
     });
@@ -266,7 +289,8 @@ export async function generateMiniChallenge(
   `;
 
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [{ role: 'system', content: systemMessageContent }],
       temperature: 0.7,
@@ -285,14 +309,14 @@ export async function generateMiniChallenge(
 
   } catch (error) {
     console.error('Error generating mini-challenge from OpenAI:', error);
-    // Fallback to a default challenge in case of API error
+    // Fallback to a fun default challenge
     return {
       id: uuidv4(),
       type: 'multiple-choice',
       question: `What is 2 + 2?`,
       options: ['3', '4', '5', '6'],
       correctAnswer: '4',
-      explanation: 'When you add two and two together, you get four!',
+      explanation: 'When you add two and two together, you get four! 🎉',
       points: 10,
       difficulty: 'easy',
       learningStyle: ['logical'],
@@ -329,17 +353,20 @@ export async function generateFeedback(
   `;
 
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [{ role: 'system', content: systemMessageContent }],
       temperature: 0.7,
       max_tokens: 150,
     });
 
-    return response.choices[0].message?.content || 'Great effort! Keep learning!';
+    return response.choices[0].message?.content || 'Great effort! Keep learning! 🌟';
   } catch (error) {
     console.error('Error generating feedback from OpenAI:', error);
-    return 'Great effort! Keep learning!';
+    return isCorrect
+      ? '🎉 Excellent work! You got it right! Keep up the great learning!'
+      : '💪 Good try! Learning takes practice. Let\'s try another one!';
   }
 }
 
@@ -402,7 +429,8 @@ Your teaching approach must be adaptive and nurturing. Follow these principles:
 Keep your responses concise and focused. Aim for just 2-3 sentences per message.`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [
         { role: 'system', content: systemMessageContent },
