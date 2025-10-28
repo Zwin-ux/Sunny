@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { UserProfile } from '@/types/user';
-import { Emotion } from '@/types/chat'; // Import Emotion type
 
 // For MVP, we'll use a hardcoded user ID. In a real app, this would come from auth.
 const MOCK_USER_ID = 'user-123';
@@ -11,12 +11,8 @@ const MOCK_USER_ID = 'user-123';
 export default function DashboardPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [newInterest, setNewInterest] = useState('');
-  const [learningPlan, setLearningPlan] = useState<string | null>(null);
-  const [quiz, setQuiz] = useState<any | null>(null); // Type this more strictly later
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [selectedEmotion, setSelectedEmotion] = useState<Emotion | 'neutral'>('neutral');
+  const [streak, setStreak] = useState(0);
+  const [missionsCompleted, setMissionsCompleted] = useState(0);
 
   useEffect(() => {
     async function fetchUser() {
@@ -25,16 +21,18 @@ export default function DashboardPage() {
         if (res.ok) {
           const userData: UserProfile = await res.json();
           setUser(userData);
+          // Mock data for demo
+          setStreak(3);
+          setMissionsCompleted(12);
         } else if (res.status === 404) {
-          // Create a mock user if not found for MVP
           const newUser: UserProfile = {
             id: MOCK_USER_ID,
-            name: 'Mock Student',
+            name: 'Alex',
             email: 'student@example.com',
             passwordHash: '',
             progress: {},
             chatHistory: [],
-            learningInterests: [],
+            learningInterests: ['Math', 'Science'],
             quizProgress: {},
           };
           await fetch('/api/user', {
@@ -43,8 +41,8 @@ export default function DashboardPage() {
             body: JSON.stringify(newUser),
           });
           setUser(newUser);
-        } else {
-          console.error('Failed to fetch user', await res.text());
+          setStreak(3);
+          setMissionsCompleted(12);
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -55,308 +53,185 @@ export default function DashboardPage() {
     fetchUser();
   }, []);
 
-  const handleAddInterest = async () => {
-    if (newInterest.trim() && user) {
-      const updatedUser = {
-        ...user,
-        learningInterests: [...user.learningInterests, newInterest.trim()],
-      };
-      try {
-        const res = await fetch('/api/user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedUser),
-        });
-        if (res.ok) {
-          setUser(updatedUser);
-          setNewInterest('');
-        } else {
-          console.error('Failed to update user interests', await res.text());
-        }
-      } catch (error) {
-        console.error('Error updating user interests:', error);
-      }
-    }
-  };
-
-  const handleGeneratePlan = async () => {
-    if (!user) return;
-    setLearningPlan(null);
-    try {
-      const res = await fetch('/api/learn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          type: 'plan',
-          topic: user.learningInterests.length > 0 ? user.learningInterests[0] : 'general knowledge', // Use first interest or default
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setLearningPlan(data.plan);
-      } else {
-        console.error('Failed to generate plan', await res.text());
-      }
-    } catch (error) {
-      console.error('Error generating plan:', error);
-    }
-  };
-
-  const handleGenerateQuiz = async () => {
-    if (!user) return;
-    setQuiz(null);
-    try {
-      // For MVP, we'll use a dummy lesson structure for quiz generation
-      // In a real app, this would come from a selected lesson or generated plan
-      const dummyLesson = {
-        title: user.learningInterests.length > 0 ? user.learningInterests[0] : 'general knowledge',
-        content: { description: `A brief overview of ${user?.learningInterests?.length > 0 ? user.learningInterests[0] : 'general knowledge'}.` },
-      };
-
-      const res = await fetch('/api/learn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          type: 'quiz',
-          lesson: dummyLesson,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setQuiz(data.quiz);
-      } else {
-        console.error('Failed to generate quiz', await res.text());
-      }
-    } catch (error) {
-      console.error('Error generating quiz:', error);
-    }
-  };
-
-  const handleMarkQuizCorrect = async () => {
-    if (!user || !quiz) return;
-
-    const updatedQuizProgress = {
-      ...(user.quizProgress || {}),
-      [quiz.title]: {
-        correct: ((user.quizProgress?.[quiz.title]?.correct || 0) + 1),
-        total: ((user.quizProgress?.[quiz.title]?.total || 0) + 1),
-      },
-    };
-
-    const updatedUser = {
-      ...user,
-      quizProgress: updatedQuizProgress,
-    };
-
-    try {
-      const res = await fetch('/api/user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedUser),
-      });
-      if (res.ok) {
-        setUser(updatedUser);
-        alert('Quiz progress updated!');
-      } else {
-        console.error('Failed to update quiz progress', await res.text());
-      }
-    } catch (error) {
-      console.error('Error updating quiz progress:', error);
-    }
-  };
-
-  const handleChatSubmit = async () => {
-    if (!chatInput.trim() || !user) return;
-
-    const newUserMessage = { role: 'user' as const, content: chatInput.trim() };
-    const updatedChatMessages = [...chatMessages, newUserMessage];
-    setChatMessages(updatedChatMessages);
-    setChatInput('');
-
-    try {
-      const res = await fetch('/api/learn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          type: 'chat',
-          chatHistory: updatedChatMessages, // Send current chat history for context
-          emotion: selectedEmotion, // Send selected emotion
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setChatMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
-      } else {
-        console.error('Failed to get chat response', await res.text());
-      }
-    } catch (error) {
-      console.error('Error getting chat response:', error);
-    }
-  };
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading dashboard...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-yellow-50 to-white">
+        <Image src="/sun.png" alt="Loading" width={100} height={100} className="animate-spin" />
+      </div>
+    );
   }
 
-  // For MVP, we'll assume a student role. A real app would have role-based rendering.
-  const isTeacher = false; // Placeholder
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 p-8">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800">Sunny AI Dashboard</h1>
-        <div className="flex items-center space-x-4">
-          <Image src="/sunny.png" alt="Sunny AI Logo" width={50} height={50} />
-          <span className="text-lg font-medium text-gray-700">{user?.name || 'Guest'}</span>
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50 via-white to-blue-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Image src="/sun.png" alt="Sunny" width={40} height={40} />
+            <h1 className="text-2xl font-bold text-gray-900">Sunny Learning</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-gray-700 font-medium">{user?.name || 'Student'}</span>
+            <Link
+              href="/demo"
+              className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+            >
+              Try Demo
+            </Link>
+          </div>
         </div>
       </header>
 
-      {isTeacher ? (
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Teacher Dashboard (MVP)</h2>
-          <p className="text-gray-600">This section will provide tools for managing students, lessons, and progress tracking.</p>
-          <Image src="/robot.png" alt="Teacher Robot" width={150} height={150} className="mt-4 mx-auto" />
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Current Streak</p>
+                <p className="text-4xl font-bold text-orange-500 mt-1">{streak}</p>
+                <p className="text-gray-500 text-sm mt-1">days in a row</p>
+              </div>
+              <Image src="/star.png" alt="Streak" width={60} height={60} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Missions Completed</p>
+                <p className="text-4xl font-bold text-blue-500 mt-1">{missionsCompleted}</p>
+                <p className="text-gray-500 text-sm mt-1">total missions</p>
+              </div>
+              <Image src="/rainbow.png" alt="Missions" width={60} height={60} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Learning Topics</p>
+                <p className="text-4xl font-bold text-green-500 mt-1">{user?.learningInterests.length || 0}</p>
+                <p className="text-gray-500 text-sm mt-1">subjects</p>
+              </div>
+              <Image src="/bulb.png" alt="Topics" width={60} height={60} />
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Learning Interests Section */}
-          <section className="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">My Learning Interests</h2>
-            <div className="flex mb-4">
-              <input
-                type="text"
-                className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Add a new interest (e.g., 'Quantum Physics')"
-                value={newInterest}
-                onChange={(e) => setNewInterest(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddInterest();
-                  }
-                }}
-              />
-              <button
-                onClick={handleAddInterest}
-                className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <ul className="space-y-2">
-              {user?.learningInterests.length === 0 ? (
-                <li className="text-gray-500 italic">No interests added yet.</li>
-              ) : (
-                user?.learningInterests.map((interest, index) => (
-                  <li key={index} className="bg-blue-50 text-blue-800 px-3 py-1 rounded-full text-sm inline-block mr-2 mb-2">
-                    {interest}
-                  </li>
-                ))
-              )}
-            </ul>
-            <div className="mt-6 text-center">
-              <Image src="/bulb.png" alt="Idea Bulb" width={100} height={100} className="mx-auto" />
-              <p className="text-gray-600 mt-2">Tell Sunny what you want to learn!</p>
-            </div>
-          </section>
 
-          {/* Learning Plan Section */}
-          <section className="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Personalized Learning Plan</h2>
-            <button
-              onClick={handleGeneratePlan}
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-            >
-              Generate Learning Plan
-            </button>
-            {learningPlan && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="text-lg font-semibold text-blue-800">Your Plan:</h3>
-                <p className="text-blue-700 whitespace-pre-wrap">{learningPlan}</p>
-              </div>
-            )}
-
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">Quick Quiz</h2>
-            <button
-              onClick={handleGenerateQuiz}
-              className="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors"
-            >
-              Generate Quiz
-            </button>
-            {quiz && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <h3 className="text-lg font-semibold text-yellow-800">Quiz on {quiz.title}:</h3>
-                <p className="text-yellow-700">{quiz.question}</p>
-                {quiz.options && (
-                  <ul className="list-disc list-inside ml-4">
-                    {quiz.options.map((option: string, idx: number) => (
-                      <li key={idx}>{option}</li>
-                    ))}
-                  </ul>
-                )}
-                <div className="mt-4 flex space-x-2">
-                  <button
-                    onClick={handleMarkQuizCorrect}
-                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-                  >
-                    Mark Correct
-                  </button>
-                  <button
-                    onClick={() => setQuiz(null)} // Simple way to dismiss for MVP
-                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">Chat with Sunny</h2>
-            <div className="bg-gray-50 p-4 rounded-lg h-64 overflow-y-auto mb-4">
-              {chatMessages.map((msg, index) => (
-                <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  <span className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-blue-200' : 'bg-gray-200'}`}>
-                    {msg.content}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="flex space-x-2 mb-4">
-              <input
-                type="text"
-                className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Type your message..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleChatSubmit()}
-              />
-              <button
-                onClick={handleChatSubmit}
-                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
-              >
-                Send
-              </button>
-            </div>
-
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">Emotion Selector</h2>
-            <div className="flex space-x-2">
-              {[ 'happy', 'neutral', 'confused', 'encouraging', 'curious'].map(emotion => (
-                <button
-                  key={emotion}
-                  onClick={() => setSelectedEmotion(emotion as Emotion)}
-                  className={`px-4 py-2 rounded-full text-sm capitalize ${
-                    selectedEmotion === emotion ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Quick Actions */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <Link
+                  href="/chat"
+                  className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-lg hover:shadow-md transition-shadow border-2 border-yellow-200"
                 >
-                  {emotion}
-                </button>
-              ))}
+                  <Image src="/sun.png" alt="Chat" width={50} height={50} />
+                  <span className="mt-3 font-semibold text-gray-900">Chat with Sunny</span>
+                  <span className="text-sm text-gray-600">Ask questions</span>
+                </Link>
+
+                <Link
+                  href="/missions"
+                  className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg hover:shadow-md transition-shadow border-2 border-blue-200"
+                >
+                  <Image src="/robot.png" alt="Missions" width={50} height={50} />
+                  <span className="mt-3 font-semibold text-gray-900">Start Mission</span>
+                  <span className="text-sm text-gray-600">Practice skills</span>
+                </Link>
+
+                <Link
+                  href="/progress"
+                  className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-green-100 to-teal-100 rounded-lg hover:shadow-md transition-shadow border-2 border-green-200"
+                >
+                  <Image src="/rainbow.png" alt="Progress" width={50} height={50} />
+                  <span className="mt-3 font-semibold text-gray-900">View Progress</span>
+                  <span className="text-sm text-gray-600">See your growth</span>
+                </Link>
+
+                <Link
+                  href="/demo"
+                  className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-pink-100 to-red-100 rounded-lg hover:shadow-md transition-shadow border-2 border-pink-200"
+                >
+                  <Image src="/star.png" alt="Demo" width={50} height={50} />
+                  <span className="mt-3 font-semibold text-gray-900">Try Demo</span>
+                  <span className="text-sm text-gray-600">Experience Sunny</span>
+                </Link>
+              </div>
             </div>
-          </section>
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Image src="/thumbsup.png" alt="Success" width={30} height={30} />
+                  <div>
+                    <p className="font-medium text-gray-900">Completed Math Mission</p>
+                    <p className="text-sm text-gray-500">2 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Image src="/star.png" alt="Achievement" width={30} height={30} />
+                  <div>
+                    <p className="font-medium text-gray-900">Earned 3-Day Streak</p>
+                    <p className="text-sm text-gray-500">Today</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Image src="/bulb.png" alt="Learning" width={30} height={30} />
+                  <div>
+                    <p className="font-medium text-gray-900">Started Science Topic</p>
+                    <p className="text-sm text-gray-500">Yesterday</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Learning Topics */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">My Topics</h2>
+              <div className="space-y-2">
+                {user?.learningInterests && user.learningInterests.length > 0 ? (
+                  user.learningInterests.map((interest, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <span className="text-2xl">📚</span>
+                      <span className="font-medium text-gray-900">{interest}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No topics yet. Start learning!</p>
+                )}
+              </div>
+            </div>
+
+            {/* Motivational Card */}
+            <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl shadow-sm p-6 border-2 border-yellow-200">
+              <div className="text-center">
+                <Image src="/sun.png" alt="Sunny" width={80} height={80} className="mx-auto mb-3" />
+                <h3 className="font-bold text-gray-900 mb-2">Keep Going!</h3>
+                <p className="text-sm text-gray-700">
+                  You're doing great! Complete one more mission today to keep your streak alive.
+                </p>
+                <Link
+                  href="/missions"
+                  className="mt-4 inline-block bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  Start Mission →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </main>
     </div>
   );
 }

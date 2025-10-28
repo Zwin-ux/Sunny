@@ -221,7 +221,7 @@ export function validateTone(response: string): {
   const lowerResponse = response.toLowerCase();
 
   // Should be encouraging and positive
-  const discouraging Phrases = [
+  const discouragingPhrases = [
     'you can\'t',
     'you failed',
     'that\'s wrong',
