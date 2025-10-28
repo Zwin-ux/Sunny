@@ -2,9 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, BookOpen, Brain, Trophy, Users, Zap, Star, ArrowRight } from 'lucide-react';
+import { Sparkles, BookOpen, Brain, Trophy, Users, Zap, Star, ArrowRight, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { getCurrentUser, logout } from '@/lib/auth';
 
 const features = [
   {
@@ -68,6 +70,26 @@ const testimonials = [
 
 export default function LandingPage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const checkAuth = () => {
+      try {
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const handleGetStarted = () => {
     router.push('/login');
@@ -77,6 +99,147 @@ export default function LandingPage() {
     router.push('/chat');
   };
 
+  const handleLogout = () => {
+    logout();
+    setUser(null);
+    router.push('/');
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">☀️</div>
+          <p className="text-xl text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is logged in, show welcome screen
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-blue-50 to-purple-50">
+        {/* Header with logout */}
+        <header className="px-6 py-4 flex justify-between items-center border-b-2 border-black bg-white/50">
+          <div className="flex items-center gap-2">
+            <span className="text-3xl">☀️</span>
+            <span className="font-black text-xl">Sunny AI</span>
+          </div>
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </header>
+
+        {/* Welcome Screen */}
+        <div className="max-w-4xl mx-auto px-6 py-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <div className="text-8xl mb-6">👋</div>
+            <h1 className="text-5xl lg:text-6xl font-black mb-4">
+              Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500">{user.childName || user.name || 'Friend'}</span>!
+            </h1>
+            <p className="text-xl text-gray-600 mb-2">Great to see you again!</p>
+            {user.currentStreak && user.currentStreak > 0 && (
+              <div className="inline-flex items-center gap-2 bg-orange-200 px-4 py-2 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mt-4">
+                <span className="text-2xl">🔥</span>
+                <span className="font-bold">{user.currentStreak} day streak!</span>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Action Cards */}
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              whileHover={{ y: -5 }}
+              className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
+              onClick={() => router.push('/chat')}
+            >
+              <div className="text-4xl mb-3">🎯</div>
+              <h3 className="text-xl font-bold mb-2">Start Learning</h3>
+              <p className="text-gray-600">Chat with Sunny and start a new lesson</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              whileHover={{ y: -5 }}
+              className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
+              onClick={() => router.push('/dashboard')}
+            >
+              <div className="text-4xl mb-3">📊</div>
+              <h3 className="text-xl font-bold mb-2">View Dashboard</h3>
+              <p className="text-gray-600">See your progress and achievements</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ y: -5 }}
+              className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
+              onClick={() => router.push('/chat')}
+            >
+              <div className="text-4xl mb-3">🎮</div>
+              <h3 className="text-xl font-bold mb-2">Continue Mission</h3>
+              <p className="text-gray-600">Pick up where you left off</p>
+            </motion.div>
+          </div>
+
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center"
+          >
+            <Button
+              onClick={() => router.push('/chat')}
+              size="lg"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-12 py-7 text-xl font-bold rounded-xl border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-all"
+            >
+              Let's Learn!
+              <ArrowRight className="ml-2 w-6 h-6" />
+            </Button>
+          </motion.div>
+
+          {/* Learning Stats */}
+          {user.learningInterests && user.learningInterests.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-12 p-6 bg-white rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <h3 className="font-bold text-lg mb-3">Your Interests:</h3>
+              <div className="flex flex-wrap gap-2">
+                {user.learningInterests.map((interest: string, i: number) => (
+                  <span key={i} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold border border-blue-300">
+                    {interest}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in - show landing page
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-blue-50 to-purple-50">
       {/* Hero Section */}
