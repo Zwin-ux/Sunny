@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getAdminClient, TypedSupabaseClient } from '@/lib/supabase/admin';
 import { getAIService } from '@/lib/ai-service';
 import { logger } from '@/lib/logger';
 
@@ -54,11 +54,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Type assertion after null check
+    const db = supabase as TypedSupabaseClient;
+
     // ========================================================================
     // Step 1: Get session and skill info
     // ========================================================================
 
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await db
       .from('sessions')
       .select('*, skills(*)')
       .eq('id', sessionId)

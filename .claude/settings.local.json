@@ -10,7 +10,14 @@
       "Bash(npm run vercel-build:*)",
       "Bash(npm test)",
       "Bash(npm install:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix TypeScript build errors - Production ready\n\n- Fixed corrupted function signature in difficulty-adapter.ts\n- Completed Supabase integration with type-safe clients\n- Database layer migrated with fallback to JSON storage\n- All routes building successfully\n- Ready for Vercel deployment with full Supabase backend\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(dir:*)",
+      "Bash(cut:*)",
+      "Bash(npx tsc:*)",
+      "Bash(NODE_OPTIONS=\"--trace-warnings\" npm run build:*)",
+      "Bash(npx next build:*)"
     ],
     "deny": [],
     "ask": []

@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getAdminClient, TypedSupabaseClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
@@ -32,8 +32,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Type assertion after null check
+    const db = supabase as TypedSupabaseClient;
+
     // Get user info
-    const { data: user } = await supabase
+    const { data: user } = await db
       .from('users')
       .select('*')
       .eq('id', userId)
@@ -47,14 +50,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all skills
-    const { data: skills } = await supabase
+    const { data: skills } = await db
       .from('skills')
       .select('*')
       .eq('user_id', userId)
       .order('mastery', { ascending: false });
 
     // Get recent sessions
-    const { data: recentSessions } = await supabase
+    const { data: recentSessions } = await db
       .from('sessions')
       .select('*')
       .eq('user_id', userId)
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
       .limit(5);
 
     // Get recent notes
-    const { data: recentNotes } = await supabase
+    const { data: recentNotes } = await db
       .from('notes')
       .select('*')
       .eq('user_id', userId)

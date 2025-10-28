@@ -19,11 +19,14 @@
  * }
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { isDemoMode } from '@/lib/demo-mode'
 import type { Database } from '@/types/supabase'
 
-let adminClient: ReturnType<typeof createClient<Database>> | null = null
+// Export typed client type for use in API routes
+export type TypedSupabaseClient = SupabaseClient<Database>
+
+let adminClient: TypedSupabaseClient | null = null
 
 /**
  * Get or create the Supabase admin client

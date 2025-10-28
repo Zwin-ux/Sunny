@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { getAdminClient, TypedSupabaseClient } from '@/lib/supabase/admin';
 import { getAIService } from '@/lib/ai-service';
 import { logger } from '@/lib/logger';
 
@@ -66,6 +66,9 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
+
+    // Type assertion after null check
+    const db = supabase as TypedSupabaseClient;
 
     // ========================================================================
     // Step 1: Get user profile
