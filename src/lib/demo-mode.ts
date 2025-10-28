@@ -1,30 +1,14 @@
 /**
  * Demo mode configuration for Sunny
- * 
+ *
  * This module provides utilities to check if demo mode is active and
  * to provide mock data for various features when APIs are unavailable.
  */
 
 import { logger } from './logger';
+import { isDemoMode as runtimeIsDemoMode } from './runtimeMode';
 
-/**
- * Check if demo mode is enabled
- * Demo mode is enabled if:
- * 1. NODE_ENV is production AND SUNNY_DEMO_MODE is true, OR
- * 2. SUNNY_DEMO_MODE is explicitly set to true
- */
-export function isDemoMode(): boolean {
-  const explicitDemo = process.env.SUNNY_DEMO_MODE === 'true';
-  const productionFallback = process.env.NODE_ENV === 'production';
-  
-  const demoMode = explicitDemo || productionFallback;
-  
-  if (demoMode) {
-    logger.info('Demo mode is active');
-  }
-  
-  return demoMode;
-}
+export const isDemoMode = runtimeIsDemoMode;
 
 /**
  * Mock lesson plans for demo mode
@@ -117,7 +101,7 @@ export const mockChatHistory = [
   },
   {
     role: 'assistant',
-    content: 'Hi there! I\'m Sunny! What would you like to learn about today?'
+    content: "Hi there! I'm Sunny! What would you like to learn about today?"
   },
   {
     role: 'user',
@@ -125,7 +109,8 @@ export const mockChatHistory = [
   },
   {
     role: 'assistant',
-    content: 'Robots are amazing! They\'re machines that can be programmed to do all sorts of tasks. Some robots look like humans (we call those humanoid robots), while others might look like animals or just have arms to help in factories. What would you like to know about robots specifically?'
+    content:
+      "Robots are amazing! They're machines that can be programmed to do all sorts of tasks. Some robots look like humans (we call those humanoid robots), while others might look like animals or just have arms to help in factories. What would you like to know about robots specifically?"
   }
 ];
 
@@ -160,3 +145,7 @@ export const mockUserProfile = {
     readingLevel: 'intermediate'
   }
 };
+
+if (isDemoMode()) {
+  logger.info('Demo mode helpers loaded with mock data');
+}

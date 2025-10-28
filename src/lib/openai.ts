@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { LessonPlan } from './lesson-plans';
+import { isDemoMode } from './runtimeMode';
 
 type SupportedLanguage = 'en' | 'es' | 'fr' | 'ar' | 'hi' | 'zh';
 
@@ -12,24 +13,26 @@ export interface QuizQuestion {
 }
 
 export class OpenAIService {
-  private openai: OpenAI;
+  private openai: OpenAI | null;
   private model: string = 'gpt-4';
 
   constructor() {
+    if (isDemoMode()) {
+      this.openai = null;
+      return;
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.warn('The OpenAI API key is not configured. Using fallback mode.');
-      // Create a dummy client for build time
-      this.openai = new OpenAI({
-        apiKey: 'sk-dummy-key-for-build',
-        dangerouslyAllowBrowser: false,
-      });
-    } else {
-      this.openai = new OpenAI({
-        apiKey: apiKey,
-        dangerouslyAllowBrowser: false,
-      });
+      console.warn('The OpenAI API key is not configured. Falling back to demo mode.');
+      this.openai = null;
+      return;
     }
+
+    this.openai = new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: false,
+    });
   }
 
   async generateQuizQuestion(
@@ -38,7 +41,11 @@ export class OpenAIService {
     difficulty: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
   ): Promise<QuizQuestion> {
     const prompt = this.buildPrompt(lesson, language, difficulty);
-    
+
+    if (isDemoMode() || !this.openai) {
+      return this.buildDemoQuiz(lesson, language);
+    }
+
     try {
       const completion = await this.openai.chat.completions.create({
         model: this.model,
@@ -63,8 +70,32 @@ export class OpenAIService {
       return this.parseQuizResponse(content, language);
     } catch (error) {
       console.error('Error generating quiz question:', error);
-      throw error;
+      return this.buildDemoQuiz(lesson, language);
     }
+  }
+
+  private buildDemoQuiz(lesson: LessonPlan, language: SupportedLanguage): QuizQuestion {
+    const defaultObjectives = lesson.content?.learningOutcomes;
+    const lessonTopic = lesson.title || lesson.id || 'this topic';
+    const objectivesArray = Array.isArray(defaultObjectives) && defaultObjectives.length > 0
+      ? defaultObjectives
+      : ['Practice makes progress!', 'Keep a growth mindset', 'Ask curious questions'];
+
+    const primaryObjective = objectivesArray[0] || 'Learn something new';
+    const decoyOptions = objectivesArray.slice(1, 4);
+    while (decoyOptions.length < 3) {
+      decoyOptions.push('Have fun learning');
+    }
+
+    const options = [primaryObjective, ...decoyOptions].slice(0, 4);
+
+    return {
+      question: `What is one thing you will practice in the lesson "${lessonTopic}"?`,
+      options,
+      correctAnswer: primaryObjective,
+      explanation: 'Sunny chose this so you remember the most important goal!',
+      language,
+    };
   }
 
   private buildPrompt(
@@ -119,6 +150,12 @@ export class OpenAIService {
     role: 'system' | 'user' | 'assistant';
     content: string;
   }[]): Promise<string | null> {
+    if (isDemoMode() || !this.openai) {
+      const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
+      const topicHint = lastUserMessage?.content ?? 'learning today';
+      return `I love your curiosity! Let\'s keep learning about ${topicHint}.`;
+    }
+
     try {
       const completion = await this.openai.chat.completions.create({
         model: this.model,
@@ -128,7 +165,7 @@ export class OpenAIService {
       return completion.choices[0]?.message?.content || null;
     } catch (error) {
       console.error('Error generating chat completion:', error);
-      throw error;
+      return 'Sunny is thinking of a fun follow-up! Let\'s keep going while I prepare the next activity.';
     }
   }
 

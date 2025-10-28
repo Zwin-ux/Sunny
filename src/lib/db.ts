@@ -1,11 +1,15 @@
 import { UserProfile } from '@/types/user';
 import fs from 'fs/promises';
 import path from 'path';
+import { isDemoMode } from './runtimeMode';
 
 const DB_FILE = path.resolve(process.cwd(), 'src/data/db/users.json');
 
 export async function getUsers(): Promise<UserProfile[]> {
   try {
+    if (isDemoMode()) {
+      return [];
+    }
     const data = await fs.readFile(DB_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
@@ -20,6 +24,9 @@ export async function getUsers(): Promise<UserProfile[]> {
 
 export async function saveUsers(users: UserProfile[]): Promise<void> {
   try {
+    if (isDemoMode()) {
+      return;
+    }
     await fs.writeFile(DB_FILE, JSON.stringify(users, null, 2), 'utf-8');
   } catch (error) {
     console.error('Error writing users database:', error);
@@ -33,6 +40,9 @@ export async function getUserById(id: string): Promise<UserProfile | undefined> 
 }
 
 export async function saveUser(userToSave: UserProfile): Promise<void> {
+  if (isDemoMode()) {
+    return;
+  }
   const users = await getUsers();
   const index = users.findIndex(user => user.id === userToSave.id);
 
