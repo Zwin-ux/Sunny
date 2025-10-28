@@ -1,6 +1,111 @@
 import { Answer, DemoInsights, DifficultyLevel } from '@/types/demo';
 
 /**
+ * Track topic preferences based on answer patterns
+ */
+export function trackTopicPreferences(answers: Answer[]): Record<string, number> {
+  const topicScores: Record<string, number> = {};
+  
+  answers.forEach(answer => {
+    if (!topicScores[answer.topic]) {
+      topicScores[answer.topic] = 0;
+    }
+    // Increase score for correct answers, maintain for incorrect
+    topicScores[answer.topic] += answer.correct ? 15 : 5;
+  });
+  
+  // Normalize to 0-100 scale
+  const maxScore = Math.max(...Object.values(topicScores), 1);
+  Object.keys(topicScores).forEach(topic => {
+    topicScores[topic] = Math.round((topicScores[topic] / maxScore) * 100);
+  });
+  
+  return topicScores;
+}
+
+/**
+ * Detect emotional state based on answer patterns
+ */
+export function detectEmotionalState(
+  answers: Answer[]
+): 'excited' | 'focused' | 'struggling' | 'confident' {
+  if (answers.length === 0) return 'focused';
+  
+  const recentAnswers = answers.slice(-3);
+  const correctCount = recentAnswers.filter(a => a.correct).length;
+  const avgTime = recentAnswers.reduce((sum, a) => sum + a.timeSpent, 0) / recentAnswers.length;
+  
+  // Quick and correct = excited
+  if (correctCount >= 2 && avgTime < 8000) return 'excited';
+  
+  // All correct but slower = confident
+  if (correctCount === 3) return 'confident';
+  
+  // Mixed results = focused
+  if (correctCount >= 1) return 'focused';
+  
+  // Struggling
+  return 'struggling';
+}
+
+/**
+ * Calculate focus level (0-100)
+ */
+export function calculateFocusLevel(answers: Answer[]): number {
+  if (answers.length === 0) return 50;
+  
+  const recentAnswers = answers.slice(-5);
+  const avgTime = recentAnswers.reduce((sum, a) => sum + a.timeSpent, 0) / recentAnswers.length;
+  
+  // Ideal time is 5-15 seconds
+  // Too fast (<3s) or too slow (>30s) = lower focus
+  if (avgTime < 3000) return 40;
+  if (avgTime > 30000) return 30;
+  if (avgTime >= 5000 && avgTime <= 15000) return 95;
+  if (avgTime >= 3000 && avgTime <= 20000) return 75;
+  return 60;
+}
+
+/**
+ * Generate adaptive message based on learning patterns
+ */
+export function generateAdaptiveMessage(
+  answers: Answer[],
+  topicPreferences: Record<string, number>
+): string | undefined {
+  if (answers.length < 3) return undefined;
+  
+  const recentAnswers = answers.slice(-3);
+  const correctCount = recentAnswers.filter(a => a.correct).length;
+  
+  // Find favorite topic
+  const topTopic = Object.entries(topicPreferences)
+    .sort(([, a], [, b]) => b - a)[0];
+  
+  // Streak of correct answers
+  if (correctCount === 3) {
+    return "You're on fire! 🔥 Want to try a harder challenge?";
+  }
+  
+  // Struggling
+  if (correctCount === 0) {
+    return "Let's try something different. I'll adjust to help you succeed! 💪";
+  }
+  
+  // Topic preference detected
+  if (topTopic && topTopic[1] > 60) {
+    return `I noticed you like ${topTopic[0]}! Want to explore more ${topTopic[0]} questions?`;
+  }
+  
+  // Steady progress
+  if (correctCount === 2) {
+    return "Great progress! You're learning fast! ⭐";
+  }
+  
+  return undefined;
+}
+
+/**
  * Analyze demo performance and generate personalized insights
  */
 export function analyzePerformance(answers: Answer[], totalTime: number): DemoInsights {

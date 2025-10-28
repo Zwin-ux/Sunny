@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SunnyVoice } from '@/components/voice/SunnyVoice';
+import { LearningFeedback } from '@/components/demo/LearningFeedback';
 import { getRandomQuestion, getNextDifficulty } from '@/lib/demo-questions';
+import { 
+  trackTopicPreferences, 
+  detectEmotionalState, 
+  calculateFocusLevel,
+  generateAdaptiveMessage 
+} from '@/lib/demo-insights';
 import { Question, DifficultyLevel, Answer } from '@/types/demo';
 
 interface DemoMissionProps {
@@ -119,10 +126,16 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
   }
 
   const isCorrect = selectedAnswer === currentQuestion.correctIndex;
+  
+  // Calculate learning metrics
+  const topicPreferences = trackTopicPreferences(answers);
+  const emotionalState = detectEmotionalState(answers);
+  const focusLevel = calculateFocusLevel(answers);
+  const adaptiveMessage = generateAdaptiveMessage(answers, topicPreferences);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-yellow-50 to-white">
-      <div className="max-w-2xl w-full">
+      <div className="max-w-4xl w-full">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">☀️</div>
@@ -138,6 +151,18 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
 
         {/* Progress Bar */}
         <Progress value={progress} className="mb-6" />
+        
+        {/* Learning Feedback - Show after 2 questions */}
+        {answers.length >= 2 && (
+          <div className="mb-6">
+            <LearningFeedback
+              topicPreferences={topicPreferences}
+              emotionalState={emotionalState}
+              focusLevel={focusLevel}
+              adaptiveMessage={adaptiveMessage}
+            />
+          </div>
+        )}
 
         {/* Sunny's Message */}
         <div className="bg-yellow-100 border-2 border-yellow-300 rounded-lg p-4 mb-6">
