@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Lesson, LearningProgress, StudentProgress, ContentType } from '../types/lesson';
-// Lazy import to avoid build-time initialization issues
-// import LessonRepository from '../lib/lessons/LessonRepository';
+import LessonRepository from '../lib/lessons/LessonRepository';
 
 type LearningSessionContextType = {
   currentLesson: Lesson | null;
@@ -76,8 +75,6 @@ export const LearningSessionProvider: React.FC<{ children: ReactNode }> = ({ chi
   }, [progress]);
 
   const startLesson = (lessonId: string) => {
-    // Lazy load LessonRepository to avoid build-time issues
-    const LessonRepository = require('../lib/lessons/LessonRepository').default;
     const lesson = LessonRepository.getLesson(lessonId);
     if (!lesson) return;
 

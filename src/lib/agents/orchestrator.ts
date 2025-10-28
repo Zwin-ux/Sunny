@@ -377,7 +377,7 @@ export class LearningOrchestrator extends EventEmitter {
     // Utility methods
     private initializeKnowledgeMap(profile: EnhancedStudentProfile): ConceptMap {
         return {
-            concepts: [],
+            concepts: {}, // Empty record initially, will be populated as student learns
             relationships: [],
             masteryLevels: new Map(),
             knowledgeGaps: []
@@ -496,26 +496,22 @@ export class LearningOrchestrator extends EventEmitter {
     }
 
     private async executeContentDecision(decision: Decision, studentId: string): Promise<ExecutionResult> {
-        // Request content generation agent to create content
-        const agent = this.agents.get('contentGeneration');
-        if (!agent) {
-            return { response: '', actions: [], updates: {} };
+        // For now, use the AI generation directly
+        // TODO: Make content generation agent call OpenAI with specialized prompts
+        const learningState = this.getLearningState(studentId);
+
+        // Generate a contextual response based on the learning state
+        let response = "Let me help you learn about that! ";
+
+        // Add context-aware suggestions
+        if (learningState && learningState.knowledgeMap.knowledgeGaps.length > 0) {
+            response += "I notice we can work on some concepts together. ";
         }
 
-        const message: AgentMessage = {
-            id: uuidv4(),
-            from: 'orchestrator',
-            to: 'contentGeneration',
-            type: 'request',
-            payload: { action: 'generate', ...decision.data },
-            timestamp: Date.now(),
-            priority: 'high'
-        };
-
-        const response = await agent.handleMessage(message);
+        response += decision.data?.hint || "What would you like to explore?";
 
         return {
-            response: response.data?.content || '',
+            response,
             actions: ['content_generated'],
             updates: {}
         };

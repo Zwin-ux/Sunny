@@ -15,10 +15,13 @@ import {
 import { globalAgentManager } from './agents';
 import { isDemoMode } from './demo-mode';
 
+// Re-export isDemoMode for other modules
+export { isDemoMode };
+
 // Lazy-load OpenAI client to avoid initialization errors when API key is missing
 let openaiClient: OpenAI | null = null;
 
-function getOpenAIClient(): OpenAI {
+export function getOpenAIClient(): OpenAI {
   if (isDemoMode()) {
     throw new Error('Demo mode active - OpenAI client not available');
   }

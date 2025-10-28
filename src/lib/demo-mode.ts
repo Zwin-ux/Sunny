@@ -10,20 +10,62 @@ import { logger } from './logger';
 /**
  * Check if demo mode is enabled
  * Demo mode is enabled if:
- * 1. NODE_ENV is production AND SUNNY_DEMO_MODE is true, OR
- * 2. SUNNY_DEMO_MODE is explicitly set to true
+ * 1. SUNNY_DEMO_MODE is explicitly set to 'true', OR
+ * 2. In production AND missing required API keys (OpenAI or Supabase)
+ *
+ * This allows the app to gracefully degrade when:
+ * - Running without API credentials
+ * - Testing UI/UX without backend dependencies
+ * - Showcasing the app in demos
  */
 export function isDemoMode(): boolean {
   const explicitDemo = process.env.SUNNY_DEMO_MODE === 'true';
-  const productionFallback = process.env.NODE_ENV === 'production';
-  
+
+  // Check if required services are configured
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  const hasSupabase = !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+
+  // In production, enable demo mode if missing required services
+  const productionFallback =
+    process.env.NODE_ENV === 'production' &&
+    (!hasOpenAI || !hasSupabase);
+
   const demoMode = explicitDemo || productionFallback;
-  
+
   if (demoMode) {
-    logger.info('Demo mode is active');
+    logger.info('Demo mode is active', {
+      explicitDemo,
+      hasOpenAI,
+      hasSupabase,
+      environment: process.env.NODE_ENV
+    });
   }
-  
+
   return demoMode;
+}
+
+/**
+ * Check if a specific service is available
+ */
+export function isServiceAvailable(service: 'openai' | 'supabase'): boolean {
+  if (process.env.SUNNY_DEMO_MODE === 'true') {
+    return false;
+  }
+
+  switch (service) {
+    case 'openai':
+      return !!process.env.OPENAI_API_KEY;
+    case 'supabase':
+      return !!(
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      );
+    default:
+      return false;
+  }
 }
 
 /**

@@ -5,7 +5,8 @@ import { Lesson, LessonContent, MediaContent, QuizQuestion, ContentType } from '
 import LessonRepository from '../lib/lessons/LessonRepository';
 import intentParser, { Intent } from '../lib/nlu/IntentParser';
 import { v4 as uuidv4 } from 'uuid';
-import { generateMiniChallenge, generateFeedback } from '../lib/sunny-ai';
+import { generateMiniChallenge, generateFeedback, generateAgenticSunnyResponse } from '../lib/sunny-ai';
+import { globalAgentManager } from '../lib/agents';
 
 export const useLearningChat = (onNewMessage: (message: Message) => void, studentProfile: StudentProfile) => {
   const {
@@ -110,7 +111,7 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     }
   }, [currentContentIndex, currentLessonState, goToPreviousContent, onNewMessage]);
 
-  // Handle sending a message that might be a learning intent
+  // Handle sending a message using the autonomous agent system
   const handleUserMessage = useCallback(async (message: string) => {
     const userMessage: UserMessage = {
       id: `user-${Date.now()}`,
@@ -125,67 +126,130 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     setIsProcessing(true);
 
     try {
+      // Handle lesson navigation if in a lesson
       if (currentLessonState) {
         const lowerMessage = message.toLowerCase();
         if (lowerMessage.includes('next') || lowerMessage.includes('continue')) {
           handleNext();
+          setIsProcessing(false);
+          return;
         } else if (lowerMessage.includes('previous') || lowerMessage.includes('go back')) {
           handlePrevious();
-        } else {
-          onNewMessage(createAssistantTextMessage("You can say 'next' or 'previous' to navigate the lesson."));
+          setIsProcessing(false);
+          return;
         }
-        setIsProcessing(false);
-        return;
       }
 
-      const intent = await intentParser.parse(message);
+      // 🧠 USE THE AUTONOMOUS AGENT SYSTEM!
+      console.log('🤖 Processing message through agent manager...');
 
-      if (intent.type === 'learn' && intent.entities.topic) {
-        const lessons = LessonRepository.findLessonsByTopic(intent.entities.topic);
-        if (lessons.length > 0) {
-          let targetLesson = lessons[0];
-          if (intent.entities.difficulty && lessons.some(l => l.difficulty === intent.entities.difficulty)) {
-            targetLesson = lessons.find(l => l.difficulty === intent.entities.difficulty) || targetLesson;
-          }
-          startNewLesson(targetLesson.id);
-          if (intent.entities.contentType) {
-            const contentType = intent.entities.contentType;
-            const contentIndex = targetLesson.content.findIndex(c => c.type === contentType);
-            if (contentIndex >= 0) {
-              setTimeout(() => goToContent(contentIndex.toString()), 500);
-            }
-          }
-        } else {
-          const availableTopics = intentParser.getAvailableTopics().slice(0, 3).join(', ');
-          onNewMessage(createAssistantTextMessage(`I don't have a lesson about "${intent.entities.topic}" yet. Would you like to learn about ${availableTopics} instead?`));
-        }
-      } else if (intent.type === 'quiz') {
-        const topic = intent.entities.topic || 'general knowledge';
-        const difficulty = studentProfile.difficulty || 'easy';
-        const learningStyle = studentProfile.learningStyle || 'visual';
+      try {
+        // Initialize agent manager if needed
+        await globalAgentManager.initialize();
 
-        const newChallenge = await generateMiniChallenge(topic, difficulty, learningStyle);
-        const challengeMessage: ChallengeMessage = {
+        // Process the message through the multi-agent system
+        const agentResult = await globalAgentManager.processStudentMessage(
+          studentProfile.name || 'student',
+          message,
+          studentProfile
+        );
+
+        console.log('🎯 Agent recommendations:', agentResult.actions);
+
+        // Create AI response from agent
+        const aiResponse: AssistantMessage = {
           id: uuidv4(),
           role: 'assistant',
-          type: 'challenge',
-          content: newChallenge,
+          type: 'assistant',
+          content: agentResult.response,
           timestamp: Date.now(),
           name: 'Sunny',
+          metadata: {
+            teachingStrategy: 'agentic',
+            knowledgeLevel: studentProfile.difficulty,
+            topics: [message]
+          }
         };
-        onNewMessage(challengeMessage);
-      } else if (intent.type === 'help') {
-        onNewMessage(createAssistantTextMessage(intentParser.getHelpResponse()));
-      } else {
-        onNewMessage(createAssistantTextMessage(intentParser.getClarificationPrompt()));
+
+        onNewMessage(aiResponse);
+
+        // Handle agent-recommended actions
+        for (const action of agentResult.actions) {
+          if (action.includes('generate_quiz')) {
+            // Generate a challenge based on the conversation
+            setTimeout(async () => {
+              const topic = message.toLowerCase();
+              const difficulty = studentProfile.difficulty || 'easy';
+              const learningStyle = studentProfile.learningStyle || 'visual';
+
+              const newChallenge = await generateMiniChallenge(topic, difficulty, learningStyle);
+              const challengeMessage: ChallengeMessage = {
+                id: uuidv4(),
+                role: 'assistant',
+                type: 'challenge',
+                content: newChallenge,
+                timestamp: Date.now(),
+                name: 'Sunny',
+              };
+              onNewMessage(challengeMessage);
+            }, 2000);
+          } else if (action.includes('adjust_difficulty')) {
+            // Difficulty adjustment will be handled by student profile updates
+            console.log('📊 Difficulty adjustment recommended:', action);
+          }
+        }
+
+      } catch (agentError) {
+        console.warn('⚠️ Agent processing failed, using fallback:', agentError);
+
+        // Fallback to intent parser if agents fail
+        const intent = await intentParser.parse(message);
+
+        if (intent.type === 'learn' && intent.entities.topic) {
+          const lessons = LessonRepository.findLessonsByTopic(intent.entities.topic);
+          if (lessons.length > 0) {
+            let targetLesson = lessons[0];
+            if (intent.entities.difficulty && lessons.some(l => l.difficulty === intent.entities.difficulty)) {
+              targetLesson = lessons.find(l => l.difficulty === intent.entities.difficulty) || targetLesson;
+            }
+            startNewLesson(targetLesson.id);
+          } else {
+            // Even in fallback, try to use AI to respond
+            onNewMessage(createAssistantTextMessage(
+              `I'd love to teach you about ${intent.entities.topic}! Let me create a personalized lesson for you. What specifically would you like to know?`
+            ));
+          }
+        } else if (intent.type === 'quiz') {
+          const topic = intent.entities.topic || 'general knowledge';
+          const difficulty = studentProfile.difficulty || 'easy';
+          const learningStyle = studentProfile.learningStyle || 'visual';
+
+          const newChallenge = await generateMiniChallenge(topic, difficulty, learningStyle);
+          const challengeMessage: ChallengeMessage = {
+            id: uuidv4(),
+            role: 'assistant',
+            type: 'challenge',
+            content: newChallenge,
+            timestamp: Date.now(),
+            name: 'Sunny',
+          };
+          onNewMessage(challengeMessage);
+        } else {
+          onNewMessage(createAssistantTextMessage(
+            "I'm here to help you learn! What topic interests you today? 🌟"
+          ));
+        }
       }
+
     } catch (error) {
-      console.error('Error handling user message:', error);
-      onNewMessage(createAssistantTextMessage("I'm having trouble understanding that right now. Could you try asking in a different way?"));
+      console.error('❌ Error handling user message:', error);
+      onNewMessage(createAssistantTextMessage(
+        "Oops! I had a little hiccup. Let's try that again! What would you like to learn about? 😊"
+      ));
     } finally {
       setIsProcessing(false);
     }
-  }, [currentLessonState, onNewMessage, startNewLesson, goToContent, handleNext, handlePrevious]);
+  }, [currentLessonState, onNewMessage, startNewLesson, goToContent, handleNext, handlePrevious, studentProfile]);
 
   const handleQuizAnswer = useCallback(async (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => {
     if (!currentLessonState) return;

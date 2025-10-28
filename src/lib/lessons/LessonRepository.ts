@@ -327,26 +327,18 @@ class LessonRepository {
 // Export the class
 export { LessonRepository };
 
-// Lazy initialization - only create instance when accessed
-const getLessonRepositoryInstance = () => LessonRepository.getInstance();
+// Create a proxy object that lazily initializes the repository
+// This prevents initialization during build time
+const repositoryProxy = new Proxy({} as any, {
+  get(target, prop) {
+    // Lazy initialization on first access
+    if (!target._instance) {
+      target._instance = LessonRepository.getInstance();
+    }
+    const instance = target._instance;
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
+  }
+});
 
-// Default export as getter function to avoid build-time initialization
-export default {
-  getInstance: getLessonRepositoryInstance,
-  getLesson: (id: string) => getLessonRepositoryInstance().getLesson(id),
-  getAllLessons: () => getLessonRepositoryInstance().getAllLessons(),
-  findLessonsByTopic: (topic: string) => getLessonRepositoryInstance().findLessonsByTopic(topic),
-  findLessonsByDifficulty: (difficulty: 'beginner' | 'intermediate' | 'advanced') => getLessonRepositoryInstance().findLessonsByDifficulty(difficulty),
-  searchLessons: (query: string) => getLessonRepositoryInstance().searchLessons(query),
-  getLessonContent: (lessonId: string, contentId: string) => getLessonRepositoryInstance().getLessonContent(lessonId, contentId),
-  getNextContent: (lessonId: string, currentContentId: string) => getLessonRepositoryInstance().getNextContent(lessonId, currentContentId),
-  getPreviousContent: (lessonId: string, currentContentId: string) => getLessonRepositoryInstance().getPreviousContent(lessonId, currentContentId),
-  findLessonsByContentType: (contentType: ContentType) => getLessonRepositoryInstance().findLessonsByContentType(contentType),
-  getLessonContentByType: (lessonId: string, contentType: ContentType) => getLessonRepositoryInstance().getLessonContentByType(lessonId, contentType),
-  findBestLessonMatch: (topic: string, difficulty?: 'beginner' | 'intermediate' | 'advanced') => getLessonRepositoryInstance().findBestLessonMatch(topic, difficulty),
-  getAvailableTopics: () => getLessonRepositoryInstance().getAvailableTopics(),
-  addLesson: (lesson: Lesson) => getLessonRepositoryInstance().addLesson(lesson),
-  loadLessonsFromDirectory: (directoryPath: string) => getLessonRepositoryInstance().loadLessonsFromDirectory(directoryPath),
-  loadMarkdownLesson: (filePath: string) => getLessonRepositoryInstance().loadMarkdownLesson(filePath),
-  loadJsonLesson: (filePath: string) => getLessonRepositoryInstance().loadJsonLesson(filePath),
-};
+export default repositoryProxy;

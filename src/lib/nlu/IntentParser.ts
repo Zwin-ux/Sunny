@@ -289,6 +289,22 @@ What would you like to learn about today?`;
   }
 }
 
+// Lazy-load singleton instance to avoid build-time initialization
+let intentParserInstance: IntentParser | null = null;
+
+function getIntentParser(): IntentParser {
+  if (!intentParserInstance) {
+    intentParserInstance = new IntentParser();
+  }
+  return intentParserInstance;
+}
+
 // Create and export a singleton instance for easy access
-export const intentParser = new IntentParser();
+export const intentParser = {
+  parse: (input: string) => getIntentParser().parse(input),
+  getClarificationPrompt: () => getIntentParser().getClarificationPrompt(),
+  getHelpResponse: () => getIntentParser().getHelpResponse(),
+  getAvailableTopics: () => getIntentParser().getAvailableTopics()
+};
+
 export default intentParser;

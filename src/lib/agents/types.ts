@@ -77,7 +77,7 @@ export interface LearningObjective {
 }
 
 export interface ConceptMap {
-  concepts: Concept[];
+  concepts: Record<string, Concept>; // Maps concept ID to Concept object
   relationships: ConceptRelationship[];
   masteryLevels: Map<string, MasteryLevel>;
   knowledgeGaps: Gap[];
