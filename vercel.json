@@ -1,12 +1,5 @@
 {
-  "buildCommand": "next build",
   "framework": "nextjs",
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
@@ -45,13 +38,6 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/api",
-      "destination": "/api/health",
-      "permanent": false
     }
   ]
 }
