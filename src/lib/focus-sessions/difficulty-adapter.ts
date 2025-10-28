@@ -96,7 +96,7 @@ export class DifficultyAdapter {
    * Increase difficulty by one tier
    */
   increaseDifficulty(current: DifficultyLevel): DifficultyLevel {
-    const tiers: DifficultyLevel[] = ['beginner', 'easy', 'medium', 'hard', 'advanced', 'expert'];
+    const tiers: DifficultyLevel[] = ['beginner', 'easy', 'medium', 'intermediate', 'hard', 'advanced'];
     const currentIndex = tiers.indexOf(current);
 
     if (currentIndex === -1) {
@@ -116,7 +116,7 @@ export class DifficultyAdapter {
    * Decrease difficulty by one tier
    */
   decreaseDifficulty(current: DifficultyLevel): DifficultyLevel {
-    const tiers: DifficultyLevel[] = ['beginner', 'easy', 'medium', 'hard', 'advanced', 'expert'];
+    const tiers: DifficultyLevel[] = ['beginner', 'easy', 'medium', 'intermediate', 'hard', 'advanced'];
     const currentIndex = tiers.indexOf(current);
 
     if (currentIndex === -1) {
@@ -210,16 +210,16 @@ export class DifficultyAdapter {
           scaffoldingLevel: 0.3,
         };
 
-      case 'advanced':
+      case 'intermediate':
         return {
-          targetAccuracy: 0.6,
+          targetAccuracy: 0.65,
           hintsAvailable: 1,
           timePerItem: 12,
-          complexityLevel: 4,
-          scaffoldingLevel: 0.2,
+          complexityLevel: 3,
+          scaffoldingLevel: 0.3,
         };
 
-      case 'expert':
+      case 'advanced':
         return {
           targetAccuracy: 0.55,
           hintsAvailable: 0,
@@ -341,15 +341,8 @@ export class DifficultyAdapter {
     suggestedModality?: 'flashcards' | 'quiz' | 'micro_game';
     reason?: string;
   } {
-    // High frustration → switch to something more engaging
-    if (performance.frustrationLevel >= 0.6) {
-      if (currentModality !== 'micro_game') {
-        return {
-          shouldSwitch: true,
-          suggestedModality: 'micro_game',
-          reason: 'Switching to a game to make learning more fun and reduce frustration',
-        };
-      }
+    // High frustration → switch to easier modality
+    if (performance.frustrationLevel >= 0.7) {
       if (currentModality !== 'flashcards') {
         return {
           shouldSwitch: true,

@@ -57,7 +57,7 @@ export class ConceptExtractor {
       const conceptMapData = JSON.parse(responseText);
       return this.validateAndNormalizeConceptMap(conceptMapData, topic);
     } catch (error) {
-      logger.error('Error extracting concepts:', error);
+      logger.error('Error extracting concepts:', error as Error);
       return this.getFallbackConceptMap(topic);
     }
   }
@@ -106,7 +106,7 @@ export class ConceptExtractor {
       const updates = JSON.parse(responseText);
       return this.applyUpdates(existingMap, updates);
     } catch (error) {
-      logger.error('Error updating concept map:', error);
+      logger.error('Error updating concept map:', error as Error);
       return this.updateConceptMapLocally(existingMap, performance);
     }
   }

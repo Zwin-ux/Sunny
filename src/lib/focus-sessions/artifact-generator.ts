@@ -77,7 +77,7 @@ export class ArtifactGenerator {
       const flashcardData = JSON.parse(responseText);
       return this.normalizeFlashcards(flashcardData, request.difficulty, difficultyParams);
     } catch (error) {
-      logger.error('Error generating flashcards:', error);
+      logger.error('Failed to generate flashcards with AI', error as Error);
       return this.getFallbackFlashcards(request);
     }
   }
@@ -206,7 +206,7 @@ export class ArtifactGenerator {
       const quizData = JSON.parse(responseText);
       return this.normalizeQuiz(quizData, request);
     } catch (error) {
-      logger.error('Error generating quiz:', error);
+      logger.error('Failed to generate quiz with AI', error as Error);
       return this.getFallbackQuiz(request);
     }
   }
@@ -355,7 +355,7 @@ export class ArtifactGenerator {
       const gameData = JSON.parse(responseText);
       return this.normalizeMicroGame(gameData, request);
     } catch (error) {
-      logger.error('Error generating micro game:', error);
+      logger.error('Failed to generate micro-game with AI', error as Error);
       return this.getFallbackMicroGame(request);
     }
   }

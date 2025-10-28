@@ -49,7 +49,7 @@ export class MemoryManager {
       localStorage.setItem(STORAGE_KEYS.SESSION_SUMMARIES, JSON.stringify(trimmed));
       logger.info(`Stored session summary: ${summary.id}`);
     } catch (error) {
-      logger.error('Error storing session summary:', error);
+      logger.error('Error storing session summary:', error as Error);
     }
   }
 
@@ -63,7 +63,7 @@ export class MemoryManager {
       const stored = localStorage.getItem(STORAGE_KEYS.SESSION_SUMMARIES);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      logger.error('Error retrieving session summaries:', error);
+      logger.error('Error retrieving session summaries:', error as Error);
       return [];
     }
   }
@@ -291,7 +291,7 @@ export class MemoryManager {
 
       localStorage.setItem(STORAGE_KEYS.CONCEPT_MEMORIES, JSON.stringify(trimmed));
     } catch (error) {
-      logger.error('Error storing concept memory:', error);
+      logger.error('Error storing concept memory:', error as Error);
     }
   }
 
@@ -305,7 +305,7 @@ export class MemoryManager {
       const stored = localStorage.getItem(STORAGE_KEYS.CONCEPT_MEMORIES);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      logger.error('Error retrieving concept memories:', error);
+      logger.error('Error retrieving concept memories:', error as Error);
       return [];
     }
   }
@@ -439,7 +439,7 @@ export class MemoryManager {
     try {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, JSON.stringify(session));
     } catch (error) {
-      logger.error('Error storing active session:', error);
+      logger.error('Error storing active session:', error as Error);
     }
   }
 
@@ -453,7 +453,7 @@ export class MemoryManager {
       const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
       return stored ? JSON.parse(stored) : null;
     } catch (error) {
-      logger.error('Error retrieving active session:', error);
+      logger.error('Error retrieving active session:', error as Error);
       return null;
     }
   }
@@ -467,7 +467,7 @@ export class MemoryManager {
     try {
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
     } catch (error) {
-      logger.error('Error clearing active session:', error);
+      logger.error('Error clearing active session:', error as Error);
     }
   }
 

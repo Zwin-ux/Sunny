@@ -120,7 +120,7 @@ async function saveUserToSupabase(user: UserProfile): Promise<void> {
   const dbUser = userProfileToDatabase(user);
   const { error } = await admin
     .from('users')
-    .upsert(dbUser, { onConflict: 'id' });
+    .upsert(dbUser as any, { onConflict: 'id' });
 
   if (error) {
     logger.error('Error saving user to Supabase:', error as any);
@@ -232,7 +232,7 @@ export async function saveUsers(users: UserProfile[]): Promise<void> {
         const dbUsers = users.map(userProfileToDatabase);
         const { error } = await admin
           .from('users')
-          .upsert(dbUsers, { onConflict: 'id' });
+          .upsert(dbUsers as any, { onConflict: 'id' });
 
         if (error) {
           throw error;
