@@ -515,14 +515,14 @@ export async function getStudentLearningInsights(studentId: string): Promise<any
   try {
     await globalAgentManager.initialize();
     const learningState = globalAgentManager.getLearningState(studentId);
-    
+
     if (!learningState) {
       return {
         hasData: false,
         message: 'No learning data available yet. Start learning to see insights!'
       };
     }
-    
+
     return {
       hasData: true,
       engagement: learningState.engagementMetrics,
@@ -535,6 +535,187 @@ export async function getStudentLearningInsights(studentId: string): Promise<any
     return {
       hasData: false,
       error: 'Unable to retrieve learning insights'
+    };
+  }
+}
+
+// ============================================================================
+// Learning OS - Structured Response Generation
+// ============================================================================
+
+/**
+ * Action types that Sunny can take
+ */
+export type SunnyActionType =
+  | 'STAY_CHAT'        // Continue in chat interface
+  | 'OPEN_APP'         // Navigate to a specific app
+  | 'LAUNCH_GAME'      // Launch a game
+  | 'START_SESSION'    // Start a focus session
+  | 'SHOW_EMOTION'     // Show emotion support panel
+  | 'UPDATE_PROGRESS'; // Update student progress display
+
+/**
+ * Structured action for Sunny to perform
+ */
+export interface SunnyAction {
+  type: SunnyActionType;
+  app?: string;              // App name like 'GAMES', 'STORY_BUILDER'
+  route?: string;            // Route to navigate to
+  params?: Record<string, any>; // Additional parameters
+  priority?: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Structured response from Sunny (Learning OS)
+ */
+export interface SunnyControlResponse {
+  intent: string;            // Detected intent from IntentType
+  message: string;           // Natural language response
+  action?: SunnyAction;      // Action to take (if any)
+  metadata: {
+    confidence: number;      // Confidence in intent detection (0-1)
+    skillsTargeted: string[]; // Skills being targeted
+    difficulty: DifficultyLevel; // Current difficulty level
+    estimatedDuration?: number; // Estimated duration in minutes
+    shouldNavigate: boolean;    // Whether to navigate away from chat
+  };
+}
+
+/**
+ * Generate structured Sunny response using OpenAI function calling
+ * This enables Sunny to be a "Learning OS" that can launch apps, not just chat
+ */
+export async function generateStructuredSunnyResponse(
+  message: string,
+  studentProfile: StudentProfile,
+  studentId: string = 'default'
+): Promise<SunnyControlResponse> {
+  try {
+    const client = getOpenAIClient();
+
+    // System prompt for Learning OS behavior
+    const systemPrompt = `You are Sunny, an AI learning companion for children aged 6-10. You are not just a chatbot - you are a "Learning OS" that can launch different learning apps and activities.
+
+Your capabilities:
+- CHAT: Answer questions and explain concepts
+- GAMES: Launch educational games
+- STORIES: Create and tell stories
+- FOCUS: Start structured practice sessions
+- BUILD: Help create things (robots, art, etc.)
+- PROGRESS: Show learning progress
+
+Always be:
+- Encouraging and positive
+- Age-appropriate (6-10 years old)
+- Fun and engaging with emojis
+- Clear about what you're going to do next
+
+Student profile:
+- Name: ${studentProfile.name}
+- Learning style: ${studentProfile.learningStyle || 'not specified'}
+- Difficulty: ${studentProfile.difficulty || 'medium'}
+- Interests: ${studentProfile.learningInterests?.join(', ') || 'not specified'}
+
+Based on the child's message, decide:
+1. What intent are they expressing?
+2. What should you say to them?
+3. Should you launch an app or stay in chat?
+4. What skills are they working on?`;
+
+    // OpenAI function definition for structured response
+    const response = await client.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      functions: [{
+        name: 'sunny_control_response',
+        description: 'Generate a structured response with intent, message, and optional action',
+        parameters: {
+          type: 'object',
+          properties: {
+            intent: {
+              type: 'string',
+              description: 'The detected intent (learn, game_time, story_mode, focus_session, help, etc.)'
+            },
+            message: {
+              type: 'string',
+              description: 'Your natural language response to the child (2-3 sentences, friendly, with emojis)'
+            },
+            action: {
+              type: 'object',
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['STAY_CHAT', 'OPEN_APP', 'LAUNCH_GAME', 'START_SESSION', 'SHOW_EMOTION', 'UPDATE_PROGRESS'],
+                  description: 'What action to take'
+                },
+                app: {
+                  type: 'string',
+                  description: 'App name (GAMES, STORY_BUILDER, FOCUS_SESSION, DASHBOARD)'
+                },
+                route: {
+                  type: 'string',
+                  description: 'Route to navigate to (/games, /stories, /focus, /progress)'
+                },
+                params: {
+                  type: 'object',
+                  description: 'Additional parameters for the app'
+                }
+              },
+              required: ['type']
+            },
+            skillsTargeted: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Skills being targeted (e.g., ["math", "problem-solving"])'
+            },
+            confidence: {
+              type: 'number',
+              description: 'Confidence in intent detection (0-1)'
+            }
+          },
+          required: ['intent', 'message', 'skillsTargeted', 'confidence']
+        }
+      }],
+      function_call: { name: 'sunny_control_response' },
+      temperature: 0.7
+    });
+
+    // Extract structured response from function call
+    const functionCall = response.choices[0].message.function_call;
+    if (!functionCall || !functionCall.arguments) {
+      throw new Error('No function call in response');
+    }
+
+    const parsedResponse = JSON.parse(functionCall.arguments);
+
+    return {
+      intent: parsedResponse.intent || 'unknown',
+      message: parsedResponse.message || 'I\'m here to help! What would you like to learn?',
+      action: parsedResponse.action,
+      metadata: {
+        confidence: parsedResponse.confidence || 0.7,
+        skillsTargeted: parsedResponse.skillsTargeted || [],
+        difficulty: studentProfile.difficulty || 'medium',
+        estimatedDuration: parsedResponse.action?.params?.duration,
+        shouldNavigate: parsedResponse.action?.type !== 'STAY_CHAT'
+      }
+    };
+  } catch (error) {
+    console.error('Error generating structured response:', error);
+
+    // Fallback to simple response
+    return {
+      intent: 'unknown',
+      message: 'I\'m here to help! What would you like to learn about today? 😊',
+      metadata: {
+        confidence: 0.5,
+        skillsTargeted: [],
+        difficulty: studentProfile.difficulty || 'medium',
+        shouldNavigate: false
+      }
     };
   }
 }

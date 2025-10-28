@@ -7,6 +7,9 @@ import intentParser, { Intent } from '../lib/nlu/IntentParser';
 import { v4 as uuidv4 } from 'uuid';
 import { generateMiniChallenge, generateFeedback, generateAgenticSunnyResponse } from '../lib/sunny-ai';
 import { globalAgentManager } from '../lib/agents';
+// Safety imports
+import { validateUserInput, getBlockedInputMessage, logSafetyIncident, detectPromptInjection } from '../lib/safety/input-validator';
+import { validateAIResponse, addEmojisIfNeeded } from '../lib/safety/output-validator';
 
 export const useLearningChat = (onNewMessage: (message: Message) => void, studentProfile: StudentProfile) => {
   const {
@@ -113,11 +116,43 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
 
   // Handle sending a message using the autonomous agent system
   const handleUserMessage = useCallback(async (message: string) => {
+    // 🛡️ SAFETY CHECK 1: Validate user input
+    console.log('🛡️ Validating user input for safety...');
+    const inputValidation = await validateUserInput(message);
+
+    // Check for prompt injection attempts
+    if (detectPromptInjection(message)) {
+      console.warn('⚠️ Prompt injection detected:', message);
+      inputValidation.safe = false;
+      inputValidation.flags.push('prompt_injection');
+    }
+
+    if (!inputValidation.safe) {
+      console.warn('⚠️ Unsafe input detected:', inputValidation.flags);
+
+      // Log safety incident
+      await logSafetyIncident(
+        studentProfile.name || 'unknown',
+        message,
+        inputValidation.flags
+      );
+
+      // Show blocked message to user
+      const blockedMessage = createAssistantTextMessage(
+        getBlockedInputMessage(inputValidation.flags)
+      );
+      onNewMessage(blockedMessage);
+      return; // Block processing
+    }
+
+    // Use sanitized version of message
+    const safeMessage = inputValidation.sanitized;
+
     const userMessage: UserMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       type: 'user',
-      content: message,
+      content: safeMessage, // Use sanitized message
       timestamp: Date.now(),
       name: 'User',
     };
@@ -156,12 +191,25 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
 
         console.log('🎯 Agent recommendations:', agentResult.actions);
 
+        // 🛡️ SAFETY CHECK 2: Validate AI output
+        console.log('🛡️ Validating AI response for safety...');
+        const outputValidation = await validateAIResponse(agentResult.response);
+
+        let safeResponse = agentResult.response;
+        if (!outputValidation.safe && outputValidation.replacement) {
+          console.warn('⚠️ Unsafe AI output detected, using replacement');
+          safeResponse = outputValidation.replacement;
+        } else if (outputValidation.safe) {
+          // Add emojis if needed for engagement
+          safeResponse = addEmojisIfNeeded(outputValidation.content);
+        }
+
         // Create AI response from agent
         const aiResponse: AssistantMessage = {
           id: uuidv4(),
           role: 'assistant',
           type: 'assistant',
-          content: agentResult.response,
+          content: safeResponse, // Use validated/safe response
           timestamp: Date.now(),
           name: 'Sunny',
           metadata: {

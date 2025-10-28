@@ -2,6 +2,7 @@ import { Lesson, ContentType } from '../../types/lesson';
 import LessonRepository from '../lessons/LessonRepository';
 
 export enum IntentType {
+  // Existing learning intents
   learn = 'learn',
   quiz = 'quiz',
   repeat = 'repeat',
@@ -9,6 +10,33 @@ export enum IntentType {
   change_topic = 'change_topic',
   clarify = 'clarify',
   unknown = 'unknown',
+
+  // NEW - Learning modes (Learning OS)
+  story_mode = 'story_mode',
+  game_time = 'game_time',
+  focus_session = 'focus_session',
+
+  // NEW - Creation/building
+  build_robot = 'build_robot',
+  draw_picture = 'draw_picture',
+  write_story = 'write_story',
+  create_something = 'create_something',
+
+  // NEW - Homework help
+  explain_step = 'explain_step',
+  check_answer = 'check_answer',
+  show_example = 'show_example',
+
+  // NEW - Emotional/social
+  feeling_sad = 'feeling_sad',
+  feeling_frustrated = 'feeling_frustrated',
+  feeling_bored = 'feeling_bored',
+  celebrate = 'celebrate',
+
+  // NEW - Progress/meta
+  show_progress = 'show_progress',
+  unlock_check = 'unlock_check',
+  change_difficulty = 'change_difficulty',
 }
 
 export interface Intent {
@@ -18,17 +46,55 @@ export interface Intent {
     topic?: string;
     difficulty?: 'beginner' | 'intermediate' | 'advanced';
     contentType?: ContentType;
+    emotion?: 'sad' | 'frustrated' | 'bored' | 'excited' | 'happy';
+  };
+  app?: {
+    name: string;
+    route: string;
+    shouldNavigate: boolean;
   };
 }
 
+// Map intents to apps (Learning OS routing)
+export const INTENT_TO_APP_MAP: Record<string, { name: string; route: string }> = {
+  [IntentType.game_time]: { name: 'GAMES', route: '/games' },
+  [IntentType.story_mode]: { name: 'STORY_BUILDER', route: '/stories' },
+  [IntentType.write_story]: { name: 'STORY_BUILDER', route: '/stories' },
+  [IntentType.focus_session]: { name: 'FOCUS_SESSION', route: '/focus' },
+  [IntentType.build_robot]: { name: 'ROBOT_BUILDER', route: '/builder' },
+  [IntentType.draw_picture]: { name: 'ART_STUDIO', route: '/art' },
+  [IntentType.create_something]: { name: 'CREATOR_LAB', route: '/create' },
+  [IntentType.show_progress]: { name: 'DASHBOARD', route: '/progress' },
+  [IntentType.quiz]: { name: 'QUIZ_LAB', route: '/quiz' },
+};
+
 // Keywords for intent detection
 const LEARN_KEYWORDS = [
-  'learn', 'teach', 'tell me about', 'explain', 'what is', 'who is', 'how does', 
+  'learn', 'teach', 'tell me about', 'explain', 'what is', 'who is', 'how does',
   'i want to learn', 'can you teach', 'tell me more', 'i\'d like to know'
 ];
 const QUIZ_KEYWORDS = ['quiz', 'test', 'question', 'challenge', 'assess', 'evaluate'];
 const REPEAT_KEYWORDS = ['repeat', 'say that again', 'go back', 'previous', 'one more time'];
 const HELP_KEYWORDS = ['help', 'what can you do', 'how does this work', 'instructions', 'guide me'];
+
+// NEW - Learning OS intent keywords
+const STORY_KEYWORDS = ['story', 'tell me a story', 'story time', 'read me', 'make up a story'];
+const GAME_KEYWORDS = ['game', 'play', 'fun', 'let\'s play', 'i want to play', 'game time'];
+const FOCUS_KEYWORDS = ['practice', 'focus', 'drill', 'study', 'work on', 'focus session', 'practice session'];
+const BUILD_KEYWORDS = ['build', 'make', 'create', 'construct', 'design'];
+const ROBOT_KEYWORDS = ['robot', 'bot', 'machine', 'automaton'];
+const DRAW_KEYWORDS = ['draw', 'paint', 'art', 'picture', 'sketch', 'color'];
+const WRITE_STORY_KEYWORDS = ['write', 'author', 'compose', 'create a story', 'make a story'];
+const EXPLAIN_STEP_KEYWORDS = ['how do i', 'show me how', 'step by step', 'walk me through', 'guide me'];
+const CHECK_ANSWER_KEYWORDS = ['is this right', 'check my answer', 'did i get it', 'is this correct', 'am i right'];
+const EXAMPLE_KEYWORDS = ['example', 'show me an example', 'give me an example', 'like what'];
+const SAD_KEYWORDS = ['sad', 'unhappy', 'down', 'upset', 'crying'];
+const FRUSTRATED_KEYWORDS = ['frustrated', 'angry', 'annoyed', 'this is hard', 'i can\'t', 'i don\'t understand'];
+const BORED_KEYWORDS = ['bored', 'boring', 'not fun', 'this is dull', 'something else'];
+const CELEBRATE_KEYWORDS = ['i did it', 'yes', 'yay', 'hooray', 'i got it', 'success', 'woohoo'];
+const PROGRESS_KEYWORDS = ['progress', 'how am i doing', 'my stats', 'my level', 'my score'];
+const UNLOCK_KEYWORDS = ['unlock', 'what can i do', 'what\'s next', 'new stuff', 'what\'s available'];
+
 const DIFFICULTY_KEYWORDS = {
   beginner: ['easy', 'simple', 'basic', 'beginner', 'introductory', 'for kids', 'elementary'],
   intermediate: ['intermediate', 'medium', 'detailed', 'more about', 'deeper', 'more complex'],
@@ -62,12 +128,35 @@ export class IntentParser {
 
   /**
    * Parse user input to determine intent and extract entities
-   * This is our main NLU function that detects learning topics
+   * This is our main NLU function that detects learning topics and app routing
    */
   async parse(input: string): Promise<Intent> {
     const normalizedInput = input.toLowerCase().trim();
-    
-    // Check for help intent first
+    const entities = this.extractEntities(normalizedInput);
+
+    // NEW - Check for emotional intents first (high priority)
+    if (SAD_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.feeling_sad, { emotion: 'sad' });
+    }
+    if (FRUSTRATED_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.feeling_frustrated, { emotion: 'frustrated' });
+    }
+    if (BORED_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.feeling_bored, { emotion: 'bored' });
+    }
+    if (CELEBRATE_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.celebrate, { emotion: 'excited' });
+    }
+
+    // NEW - Check for progress/meta intents
+    if (PROGRESS_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.show_progress);
+    }
+    if (UNLOCK_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.unlock_check);
+    }
+
+    // Check for help intent
     if (HELP_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
       return this.createIntent(IntentType.help);
     }
@@ -77,9 +166,50 @@ export class IntentParser {
       return this.createIntent(IntentType.repeat);
     }
 
+    // NEW - Check for game intent (high engagement activity)
+    if (GAME_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.game_time, entities);
+    }
+
+    // NEW - Check for story mode
+    if (STORY_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.story_mode, entities);
+    }
+
+    // NEW - Check for focus session
+    if (FOCUS_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.focus_session, entities);
+    }
+
+    // NEW - Check for building/creation intents
+    const hasBuild = BUILD_KEYWORDS.some(keyword => normalizedInput.includes(keyword));
+    const hasRobot = ROBOT_KEYWORDS.some(keyword => normalizedInput.includes(keyword));
+    if (hasBuild && hasRobot) {
+      return this.createIntent(IntentType.build_robot, entities);
+    }
+    if (DRAW_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.draw_picture, entities);
+    }
+    if (WRITE_STORY_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.write_story, entities);
+    }
+    if (hasBuild) {
+      return this.createIntent(IntentType.create_something, entities);
+    }
+
+    // NEW - Check for homework help intents
+    if (EXPLAIN_STEP_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.explain_step, entities);
+    }
+    if (CHECK_ANSWER_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.check_answer, entities);
+    }
+    if (EXAMPLE_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
+      return this.createIntent(IntentType.show_example, entities);
+    }
+
     // Check for quiz intent
     if (QUIZ_KEYWORDS.some(keyword => normalizedInput.includes(keyword))) {
-      const entities = this.extractEntities(normalizedInput);
       return this.createIntent(IntentType.quiz, entities);
     }
 
@@ -90,21 +220,20 @@ export class IntentParser {
         const parts = normalizedInput.split(keyword);
         if (parts.length > 1 && parts[1].trim()) {
           const potentialTopic = parts[1].trim();
-          const entities = this.extractEntities(potentialTopic);
-          
+          const topicEntities = this.extractEntities(potentialTopic);
+
           // If we found a topic, return it with high confidence
-          if (entities.topic) {
-            return this.createIntent(IntentType.learn, entities, 0.95);
+          if (topicEntities.topic) {
+            return this.createIntent(IntentType.learn, topicEntities, 0.95);
           }
-          
+
           // Otherwise, use the text after the keyword as the topic
-          return this.createIntent(IntentType.learn, { ...entities, topic: potentialTopic }, 0.8);
+          return this.createIntent(IntentType.learn, { ...topicEntities, topic: potentialTopic }, 0.8);
         }
       }
     }
 
     // If no explicit learn keywords, try to extract a topic directly
-    const entities = this.extractEntities(normalizedInput);
     if (entities.topic) {
       return this.createIntent(IntentType.learn, entities, 0.8);
     }
@@ -143,17 +272,30 @@ export class IntentParser {
 
   /**
    * Create an intent object with the specified type, entities, and confidence
+   * Includes app routing information for Learning OS intents
    */
   private createIntent(
-    type: IntentType, 
-    entities: Intent['entities'] = {}, 
+    type: IntentType,
+    entities: Intent['entities'] = {},
     confidence: number = 1.0
   ): Intent {
-    return {
+    const intent: Intent = {
       type,
       confidence,
       entities
     };
+
+    // Add app routing if this intent maps to an app
+    const appMapping = INTENT_TO_APP_MAP[type];
+    if (appMapping) {
+      intent.app = {
+        name: appMapping.name,
+        route: appMapping.route,
+        shouldNavigate: true
+      };
+    }
+
+    return intent;
   }
 
   /**
