@@ -245,7 +245,7 @@ async function createNote(
     note_type: type,
     priority: 'medium',
     actionable: type === 'intervention',
-  });
+  } as any);
 }
 
 /**
@@ -268,7 +268,7 @@ async function createUrgentNote(
     note_type: 'intervention',
     priority: 'high',
     actionable: true,
-  });
+  } as any);
 }
 
 /**
@@ -301,7 +301,7 @@ export async function runWeeklyAnalysis(userId: string): Promise<void> {
       note_type: 'insight',
       priority: report.strugglingCount > 2 ? 'high' : 'medium',
       actionable: report.strugglingCount > 2,
-    });
+    } as any);
   }
 
   logger.info('Weekly analysis complete', { userId, report });

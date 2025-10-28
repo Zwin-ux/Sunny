@@ -213,13 +213,13 @@ export class LearningBrain {
     if (recentAttempts.length === 0) return 0;
 
     // Calculate average mastery change
-    const masteryChanges = recentAttempts.map(a => {
+    const masteryChanges = recentAttempts.map((a): number => {
       if (a.correctness === 'correct') return a.reasoning_quality >= 4 ? 3 : 2;
       if (a.correctness === 'partial') return 0;
       return a.confidence_level === 'high' ? -3 : -2;
     });
 
-    const avgChange = masteryChanges.reduce((sum, c) => sum + c, 0) / masteryChanges.length;
+    const avgChange = masteryChanges.reduce((sum: number, c: number) => sum + c, 0) / masteryChanges.length;
     
     // Extrapolate to weekly velocity
     const attemptsPerWeek = (recentAttempts.length / 7) * 7;
@@ -525,7 +525,7 @@ export class LearningBrain {
       .order('created_at', { ascending: false })
       .limit(5);
 
-    const commonMistakes = attempts?.map(a => a.misunderstanding_label).filter(Boolean) || [];
+    const commonMistakes = attempts?.map((a: any) => a.misunderstanding_label).filter(Boolean) || [];
 
     // Generate targeted quiz using AI
     const prompt = `You are Sunny, creating a REMEDIAL quiz for a struggling student.

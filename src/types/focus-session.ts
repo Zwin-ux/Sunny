@@ -255,7 +255,7 @@ export interface MicroGameResult {
 export interface ArtifactResult {
   artifactId: string;
   artifactType: ArtifactType;
-  results: FlashcardResult[] | QuizResult[] | MicroGameResult[];
+  results: Array<FlashcardResult | QuizResult | MicroGameResult>;
   startTime: number;
   endTime: number;
   completed: boolean;
