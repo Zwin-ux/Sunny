@@ -30,6 +30,8 @@ import { getProgressKey, setProgressKey } from '@/lib/persistence'
 import { getCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v2';
+
 type Message = {
   id: string;
   role: 'user' | 'assistant';
@@ -347,7 +349,15 @@ function ChatPageContent() {
             </Button>
             <Image src="/sun.png" alt="Sunny" width={40} height={40} className="animate-pulse" />
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-gray-900">Chat with Sunny ☀️</h1>
+              <h1 className="text-xl md:text-2xl font-black text-gray-900 flex items-center">
+                Chat with Sunny ☀️ 
+                <span
+                  title={`Build ${APP_VERSION}`}
+                  className="ml-2 inline-block text-[10px] leading-none font-extrabold px-2 py-1 rounded-full border-2 border-black bg-yellow-200"
+                >
+                  {APP_VERSION}
+                </span>
+              </h1>
               <p className="text-xs md:text-sm text-gray-600">Your AI learning companion</p>
             </div>
           </div>
