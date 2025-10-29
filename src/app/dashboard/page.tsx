@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useXP } from '@/contexts/XPContext';
+import { useRouter } from 'next/navigation';
 
 // For MVP, we'll use a hardcoded user ID. In a real app, this would come from auth.
 const MOCK_USER_ID = 'user-123';
@@ -16,6 +17,7 @@ const MOCK_USER_ID = 'user-123';
 export default function DashboardPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   // Use real XP data from XPContext
   const { xp, level, streak, totalMissions } = useXP();
@@ -83,7 +85,7 @@ export default function DashboardPage() {
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
-            <Button variant="outline" size="sm" className="border-2 border-black" onClick={() => window.location.href = '/'}>
+            <Button variant="outline" size="sm" className="border-2 border-black" onClick={() => router.push('/')}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
@@ -183,9 +185,10 @@ export default function DashboardPage() {
           <LearningAppsLauncher
             currentXP={xp}
             onAppClick={(appId) => {
+              console.log('App clicked:', appId);
               // Implemented apps
               if (appId === 'math-lab') {
-                window.location.href = '/math-lab';
+                router.push('/math-lab');
               } 
               // Apps in development
               else {
@@ -256,8 +259,8 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                 <Image src="/bulb.png" alt="Learning" width={40} height={40} />
                 <div>
-                  <p className="font-bold text-gray-900">Earned {missionsCompleted * 50} XP</p>
-                  <p className="text-sm text-gray-600">From {missionsCompleted} missions</p>
+                  <p className="font-bold text-gray-900">Earned {totalMissions * 50} XP</p>
+                  <p className="text-sm text-gray-600">From {totalMissions} missions</p>
                 </div>
               </div>
             </div>

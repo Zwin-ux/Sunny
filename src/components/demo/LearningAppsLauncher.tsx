@@ -106,8 +106,12 @@ const LEARNING_APPS: LearningApp[] = [
 
 export function LearningAppsLauncher({ currentXP, onAppClick }: LearningAppsLauncherProps) {
   const handleAppClick = (app: LearningApp) => {
+    console.log('LearningAppsLauncher: handleAppClick called', { appId: app.id, unlocked: app.unlocked });
     if (app.unlocked) {
+      console.log('LearningAppsLauncher: App is unlocked, calling onAppClick');
       onAppClick?.(app.id);
+    } else {
+      console.log('LearningAppsLauncher: App is locked, not calling onAppClick');
     }
   };
 
