@@ -1,5 +1,10 @@
 # Sunny AI for Kids
 
+![GitHub last commit](https://img.shields.io/github/last-commit/Zwin-ux/Sunny?logo=github)
+![Vercel Deploy](https://img.shields.io/badge/deploy-Vercel-black?logo=vercel)
+
+Current Chat UI: v2 (look for the yellow v2 tag in the chat header). Set `NEXT_PUBLIC_APP_VERSION` to override the visible tag per build.
+
 A cheerful, educational AI chat application designed to make learning fun for children while providing customizable lesson plans for teachers.
 
 ![Sunny AI for Kids](public/rainbow.png)
