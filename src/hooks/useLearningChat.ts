@@ -40,6 +40,11 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     difficulty?: DifficultyLevel;
     gameType?: GameType;
   } | null>(null);
+  // Focus session integration state
+  const [pendingFocusRequest, setPendingFocusRequest] = useState<{
+    topic: string;
+    duration?: number;
+  } | null>(null);
 
   // Sync with learning session context
   useEffect(() => {
@@ -250,6 +255,17 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
           });
         }
 
+        // 🎯 Check for focus session requests
+        if (intent.type === IntentType.focus_session || message.toLowerCase().includes('focus session') || message.toLowerCase().includes('practice')) {
+          console.log('🎯 Focus session request detected!');
+          const topic = intent.entities.topic || 'math';
+
+          setPendingFocusRequest({
+            topic,
+            duration: 1200, // 20 minutes
+          });
+        }
+
         if (intent.app?.shouldNavigate) {
           const routing = interpretIntent(intent);
           console.log('🚀 App launch detected:', routing);
@@ -374,6 +390,11 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     setPendingGameRequest(null);
   }, []);
 
+  // Clear pending focus session request (called after session starts)
+  const clearPendingFocusRequest = useCallback(() => {
+    setPendingFocusRequest(null);
+  }, []);
+
   return {
     isProcessing,
     handleUserMessage,
@@ -387,5 +408,8 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     // Game integration
     pendingGameRequest,
     clearPendingGameRequest,
+    // Focus session integration
+    pendingFocusRequest,
+    clearPendingFocusRequest,
   };
 };

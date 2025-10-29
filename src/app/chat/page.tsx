@@ -18,6 +18,7 @@ import { useLearningChat } from '@/hooks/useLearningChat';
 import { useLearningSession } from '@/contexts/LearningSessionContext';
 import { useAppLauncher } from '@/hooks/useAppLauncher';
 import { useGameSession } from '@/hooks/useGameSession';
+import { sessionOrchestrator } from '@/lib/focus-sessions/session-orchestrator';
 
 
 // Utils
@@ -61,6 +62,8 @@ const EmotionSelector = dynamic(() => import('@/components/emotion-selector').th
 const SunnyCharacter = dynamic(() => import('@/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
 const ContentRenderer = dynamic(() => import('@/components/interactive/ContentRenderer'), { ssr: false });
 const GameContainer = dynamic(() => import('@/components/games/GameContainer'), { ssr: false });
+const SessionDashboard = dynamic(() => import('@/components/focus-sessions/SessionDashboard'), { ssr: false });
+const FlashcardPlayer = dynamic(() => import('@/components/focus-sessions/FlashcardPlayer'), { ssr: false });
 
 // #endregion
 
@@ -167,13 +170,17 @@ function Chat() {
   }, [speak]);
   
   // Use the learning chat hook
-  const { handleUserMessage, isProcessing, pendingRouting, clearPendingRouting, pendingGameRequest, clearPendingGameRequest } = useLearningChat(onNewMessage, studentProfile);
+  const { handleUserMessage, isProcessing, pendingRouting, clearPendingRouting, pendingGameRequest, clearPendingGameRequest, pendingFocusRequest, clearPendingFocusRequest } = useLearningChat(onNewMessage, studentProfile);
 
   // Use app launcher for navigation
   const { launchAppWithDelay } = useAppLauncher();
 
   // Use game session for in-chat games
   const { isGameActive, currentGame, startGame, endGame, getPerformanceSummary } = useGameSession(studentProfile.name);
+
+  // Focus session state
+  const [activeFocusSession, setActiveFocusSession] = useState<any>(null);
+  const [currentLoop, setCurrentLoop] = useState<any>(null);
 
   // Watch for pending routing and navigate
   useEffect(() => {
@@ -212,6 +219,39 @@ function Chat() {
       });
     }
   }, [pendingGameRequest, isGameActive, startGame, clearPendingGameRequest]);
+
+  // Watch for pending focus session requests and start session
+  useEffect(() => {
+    if (pendingFocusRequest && !activeFocusSession) {
+      console.log('🎯 Starting focus session:', pendingFocusRequest);
+
+      const startSession = async () => {
+        try {
+          const session = await sessionOrchestrator.start({
+            studentId: studentProfile.name,
+            topic: pendingFocusRequest.topic,
+            targetDuration: pendingFocusRequest.duration || 1200,
+            learningGoals: [`Master ${pendingFocusRequest.topic}`],
+          });
+
+          setActiveFocusSession(session);
+
+          // Start first loop
+          const firstLoop = await sessionOrchestrator.startLoop(session.id, 1);
+          setCurrentLoop(firstLoop);
+
+          console.log('✅ Focus session started successfully');
+        } catch (error) {
+          console.error('❌ Failed to start focus session:', error);
+          toast.error('Failed to start focus session. Please try again!');
+        } finally {
+          clearPendingFocusRequest();
+        }
+      };
+
+      startSession();
+    }
+  }, [pendingFocusRequest, activeFocusSession, clearPendingFocusRequest, studentProfile.name]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !voiceMode) return;
@@ -322,6 +362,53 @@ function Chat() {
 
     toast.success(`You earned ${pointsEarned} points!`);
   }, [onNewMessage, endGame]);
+
+  // Handle focus session loop completion
+  const handleLoopComplete = useCallback(async (results: any) => {
+    if (!activeFocusSession || !currentLoop) return;
+
+    console.log('🎯 Loop completed', results);
+
+    // Record results
+    sessionOrchestrator.recordResults(activeFocusSession.id, currentLoop.loopNumber, results);
+
+    // Complete loop
+    const performance = await sessionOrchestrator.completeLoop(activeFocusSession.id, currentLoop.loopNumber);
+
+    // Check if session should continue
+    if (currentLoop.loopNumber < 3) {
+      // Start next loop
+      const nextLoop = await sessionOrchestrator.startLoop(activeFocusSession.id, currentLoop.loopNumber + 1);
+      setCurrentLoop(nextLoop);
+    } else {
+      // Complete session
+      const { session: finalSession } = await sessionOrchestrator.complete(activeFocusSession.id);
+
+      // Show completion message
+      const completionMessage: AssistantMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        type: 'assistant',
+        content: `Excellent work! You completed the focus session on ${finalSession.topic}! 🎯`,
+        timestamp: Date.now(),
+        name: 'Sunny',
+      };
+      onNewMessage(completionMessage);
+
+      // Reset state
+      setActiveFocusSession(null);
+      setCurrentLoop(null);
+
+      // Award points
+      const pointsEarned = Math.round((performance?.accuracy || 0.7) * 100);
+      setStudentProfile(prev => ({
+        ...prev,
+        points: prev.points + pointsEarned
+      }));
+
+      toast.success(`You earned ${pointsEarned} points!`);
+    }
+  }, [activeFocusSession, currentLoop, onNewMessage]);
   const handleQuizAnswer = (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => {
     // handleChatQuizAnswer(isCorrect, questionId, challenge, userAnswer);
   };
@@ -726,6 +813,58 @@ function Chat() {
               studentId={studentProfile.name}
               onComplete={handleGameComplete}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Focus Session Overlay */}
+      {activeFocusSession && currentLoop && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border-4 border-black shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto p-6">
+            <SessionDashboard
+              session={activeFocusSession}
+              currentLoop={currentLoop}
+              onLoopChange={(loopNum) => console.log(`View loop ${loopNum}`)}
+            />
+
+            <div className="mt-6">
+              {currentLoop.artifact.type === 'flashcards' && (
+                <FlashcardPlayer
+                  flashcardSet={currentLoop.artifact.data}
+                  onComplete={handleLoopComplete}
+                  onCardResult={(result) => console.log('Card result:', result)}
+                />
+              )}
+
+              {(currentLoop.artifact.type === 'quiz' || currentLoop.artifact.type === 'micro_game') && (
+                <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-300 text-center">
+                  <p className="text-lg mb-4">Quiz and Micro-game coming soon!</p>
+                  <Button onClick={() => handleLoopComplete({ accuracy: 0.8 })}>
+                    Skip to Next Loop
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 text-center">
+              <Button
+                onClick={() => {
+                  setActiveFocusSession(null);
+                  setCurrentLoop(null);
+                  onNewMessage({
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    type: 'assistant',
+                    content: 'Session ended. Feel free to start another anytime!',
+                    timestamp: Date.now(),
+                    name: 'Sunny',
+                  } as AssistantMessage);
+                }}
+                variant="outline"
+              >
+                Exit Session
+              </Button>
+            </div>
           </div>
         </div>
       )}
