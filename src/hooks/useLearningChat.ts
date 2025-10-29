@@ -10,6 +10,8 @@ import { globalAgentManager } from '../lib/agents';
 // Safety imports
 import { validateUserInput, getBlockedInputMessage, logSafetyIncident, detectPromptInjection } from '../lib/safety/input-validator';
 import { validateAIResponse, addEmojisIfNeeded } from '../lib/safety/output-validator';
+// Learning OS imports
+import { interpretIntent, interpretCombined, type RoutingDecision } from '../lib/response-interpreter';
 
 export const useLearningChat = (onNewMessage: (message: Message) => void, studentProfile: StudentProfile) => {
   const {
@@ -29,6 +31,7 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     currentIndex: number;
     isComplete: boolean;
   } | null>(null);
+  const [pendingRouting, setPendingRouting] = useState<RoutingDecision | null>(null);
 
   // Sync with learning session context
   useEffect(() => {
@@ -221,6 +224,20 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
 
         onNewMessage(aiResponse);
 
+        // 🚀 LEARNING OS: Check if intent should trigger app launch
+        console.log('🎯 Checking for app routing...');
+        const intent = await intentParser.parse(safeMessage);
+        console.log('Detected intent:', intent.type, intent.app);
+
+        if (intent.app?.shouldNavigate) {
+          const routing = interpretIntent(intent);
+          console.log('🚀 App launch detected:', routing);
+
+          if (routing.shouldNavigate) {
+            setPendingRouting(routing);
+          }
+        }
+
         // Handle agent-recommended actions
         for (const action of agentResult.actions) {
           if (action.includes('generate_quiz')) {
@@ -326,6 +343,11 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     setTimeout(() => handleNext(), 1500);
   }, [currentLessonState, updateProgress, handleNext, onNewMessage, studentProfile]);
 
+  // Clear pending routing (called after navigation)
+  const clearPendingRouting = useCallback(() => {
+    setPendingRouting(null);
+  }, []);
+
   return {
     isProcessing,
     handleUserMessage,
@@ -333,5 +355,8 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     handlePrevious,
     handleQuizAnswer,
     startNewLesson,
+    // Learning OS routing
+    pendingRouting,
+    clearPendingRouting,
   };
 };

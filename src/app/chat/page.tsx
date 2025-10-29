@@ -16,6 +16,7 @@ import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } 
 // Hooks
 import { useLearningChat } from '@/hooks/useLearningChat';
 import { useLearningSession } from '@/contexts/LearningSessionContext';
+import { useAppLauncher } from '@/hooks/useAppLauncher';
 
 
 // Utils
@@ -164,7 +165,26 @@ function Chat() {
   }, [speak]);
   
   // Use the learning chat hook
-  const { handleUserMessage, isProcessing } = useLearningChat(onNewMessage, studentProfile);
+  const { handleUserMessage, isProcessing, pendingRouting, clearPendingRouting } = useLearningChat(onNewMessage, studentProfile);
+
+  // Use app launcher for navigation
+  const { launchAppWithDelay } = useAppLauncher();
+
+  // Watch for pending routing and navigate
+  useEffect(() => {
+    if (pendingRouting && pendingRouting.shouldNavigate && pendingRouting.destination) {
+      console.log('🚀 Navigating to app:', pendingRouting.destination, pendingRouting.params);
+
+      // Navigate after delay
+      launchAppWithDelay(
+        pendingRouting.appName || 'UNKNOWN',
+        pendingRouting.params,
+        pendingRouting.delay || 1500
+      ).then(() => {
+        clearPendingRouting();
+      });
+    }
+  }, [pendingRouting, launchAppWithDelay, clearPendingRouting]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !voiceMode) return;
