@@ -17,6 +17,7 @@ import { SessionDashboard } from '@/components/focus-sessions/SessionDashboard';
 import { FlashcardPlayer } from '@/components/focus-sessions/FlashcardPlayer';
 import { SessionReview } from '@/components/focus-sessions/SessionReview';
 import type { FocusSession } from '@/types/focus-session';
+import { recordSession, addSunnyNote } from '@/lib/db';
 
 export default function FocusPage() {
   const router = useRouter();
@@ -87,6 +88,64 @@ export default function FocusPage() {
     const performance = await sessionOrchestrator.completeLoop(session.id, currentLoop.loopNumber);
     console.log('Loop performance:', performance);
 
+    // 💾 Phase 4: Record loop to database
+    if (user && performance) {
+      try {
+        const accuracy = performance.accuracy || 0;
+        const totalQuestions = performance.totalQuestions || 0;
+        const correctAnswers = Math.round(totalQuestions * accuracy);
+        const loopDuration = Math.round((performance.timeSpent || 0) / 1000);
+
+        // Record this loop as a session
+        await recordSession({
+          userId: user.id || user.name,
+          missionType: 'focus_session',
+          sunnyGoal: `${session.topic} - Loop ${currentLoop.loopNumber}`,
+          difficultyLevel: currentLoop.difficulty || session.currentDifficulty || 'medium',
+          questionsAttempted: totalQuestions,
+          questionsCorrect: correctAnswers,
+          durationSeconds: loopDuration,
+          attentionQuality: performance.engagementLevel > 0.7 ? 'high' : performance.engagementLevel > 0.4 ? 'medium' : 'low',
+          sunnySummary: `Completed loop ${currentLoop.loopNumber} of ${session.topic} with ${(accuracy * 100).toFixed(0)}% accuracy`
+        });
+
+        console.log('✅ Loop recorded to database');
+
+        // Add Sunny notes based on performance
+        if (accuracy >= 0.9 && performance.engagementLevel > 0.8) {
+          await addSunnyNote(
+            user.id || user.name,
+            `Excellent focus in ${session.topic} loop ${currentLoop.loopNumber}! Strong engagement and accuracy.`,
+            'milestone',
+            undefined,
+            'medium',
+            false
+          );
+        } else if (accuracy < 0.5 && performance.frustrationLevel > 0.6) {
+          await addSunnyNote(
+            user.id || user.name,
+            `Struggled in ${session.topic} loop ${currentLoop.loopNumber}. May need easier difficulty or break.`,
+            'concern',
+            undefined,
+            'high',
+            true
+          );
+        } else if (performance.engagementLevel < 0.3) {
+          await addSunnyNote(
+            user.id || user.name,
+            `Low engagement in ${session.topic} loop ${currentLoop.loopNumber}. Consider changing activities.`,
+            'observation',
+            undefined,
+            'medium',
+            true
+          );
+        }
+
+      } catch (error) {
+        console.error('Error recording loop to database:', error);
+      }
+    }
+
     // Check if session should continue
     if (currentLoop.loopNumber < 3) {
       // Start next loop
@@ -97,6 +156,53 @@ export default function FocusPage() {
       const { session: finalSession, performance: sessionPerf } = await sessionOrchestrator.complete(session.id);
       setSession(finalSession);
       setSessionComplete(true);
+
+      // 💾 Phase 4: Record final session summary
+      if (user && sessionPerf) {
+        try {
+          const overallAccuracy = sessionPerf.averageAccuracy || 0;
+          const totalDuration = Math.round((Date.now() - finalSession.startTime) / 1000);
+          const conceptsMastered = sessionPerf.conceptsMastered?.length || 0;
+
+          await recordSession({
+            userId: user.id || user.name,
+            missionType: 'focus_session_complete',
+            sunnyGoal: `${session.topic} - Full Session (${currentLoop.loopNumber} loops)`,
+            difficultyLevel: finalSession.currentDifficulty || 'medium',
+            questionsAttempted: sessionPerf.totalQuestions || 0,
+            questionsCorrect: sessionPerf.correctAnswers || 0,
+            durationSeconds: totalDuration,
+            attentionQuality: sessionPerf.engagementLevel > 0.7 ? 'high' : sessionPerf.engagementLevel > 0.4 ? 'medium' : 'low',
+            sunnySummary: `Completed ${currentLoop.loopNumber}-loop focus session on ${session.topic} with ${(overallAccuracy * 100).toFixed(0)}% accuracy. Mastered ${conceptsMastered} concepts.`
+          });
+
+          console.log('✅ Full session recorded to database');
+
+          // Add milestone note for completing full session
+          if (overallAccuracy >= 0.8) {
+            await addSunnyNote(
+              user.id || user.name,
+              `Completed full 20-minute focus session on ${session.topic} with excellent performance (${(overallAccuracy * 100).toFixed(0)}%)!`,
+              'milestone',
+              undefined,
+              'high',
+              false
+            );
+          } else if (overallAccuracy >= 0.6) {
+            await addSunnyNote(
+              user.id || user.name,
+              `Completed focus session on ${session.topic}. Good effort! Keep practicing to improve.`,
+              'observation',
+              undefined,
+              'low',
+              false
+            );
+          }
+
+        } catch (error) {
+          console.error('Error recording full session to database:', error);
+        }
+      }
     }
   };
 

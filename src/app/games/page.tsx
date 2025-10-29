@@ -15,6 +15,7 @@ import { useGameSession } from '@/hooks/useGameSession';
 import { GameContainer } from '@/components/games/GameContainer';
 import { getCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { recordSession, addSunnyNote } from '@/lib/db';
 
 type GameType = 'pattern-recognition' | 'math-challenge' | 'memory-match' | 'word-builder' | 'science-experiment' | 'creative-challenge';
 
@@ -142,14 +143,59 @@ export default function GamesPage() {
     }
   };
 
-  const handleGameComplete = (performance: any) => {
+  const handleGameComplete = async (performance: any) => {
     console.log('🎉 Game completed!', performance);
 
     const summary = getPerformanceSummary();
     console.log('Performance summary:', summary);
 
-    // TODO: Update student progress in database
-    // updateSkillMastery(user.id, performance);
+    // 💾 Phase 4: Record game session to database
+    if (user && currentGame) {
+      try {
+        const accuracy = performance.accuracy || 0;
+        const questionsTotal = performance.totalQuestions || 0;
+        const questionsCorrect = Math.round(questionsTotal * accuracy);
+
+        // Record session
+        await recordSession({
+          userId: user.id || user.name,
+          missionType: 'game',
+          sunnyGoal: `Play ${selectedGame?.title || 'game'}`,
+          difficultyLevel: currentGame.config.difficulty,
+          questionsAttempted: questionsTotal,
+          questionsCorrect,
+          durationSeconds: Math.round((performance.totalTime || 0) / 1000),
+          attentionQuality: performance.engagementLevel > 0.7 ? 'high' : 'medium',
+          sunnySummary: `Completed ${selectedGame?.title} with ${(accuracy * 100).toFixed(0)}% accuracy`
+        });
+
+        console.log('✅ Session recorded to database');
+
+        // Add Sunny note based on performance
+        if (accuracy >= 0.9) {
+          await addSunnyNote(
+            user.id || user.name,
+            `Excellent performance in ${selectedGame?.title}! Shows strong mastery.`,
+            'milestone',
+            undefined,
+            'medium',
+            false
+          );
+        } else if (accuracy < 0.5 && performance.frustrationLevel > 0.6) {
+          await addSunnyNote(
+            user.id || user.name,
+            `Struggled with ${selectedGame?.title}. May need additional support or easier difficulty.`,
+            'concern',
+            undefined,
+            'high',
+            true
+          );
+        }
+
+      } catch (error) {
+        console.error('Error recording session:', error);
+      }
+    }
 
     // End game
     endGame();

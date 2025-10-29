@@ -248,3 +248,392 @@ export async function saveUsers(users: UserProfile[]): Promise<void> {
   // File-based bulk save
   await saveUsersToFile(users);
 }
+
+// ============================================================================
+// Phase 4: Learning OS - Skills, Sessions, and Notes
+// ============================================================================
+
+// Type aliases for database types
+type DatabaseSkill = Database['public']['Tables']['skills']['Row'];
+type DatabaseSkillInsert = Database['public']['Tables']['skills']['Insert'];
+type DatabaseSession = Database['public']['Tables']['sessions']['Row'];
+type DatabaseSessionInsert = Database['public']['Tables']['sessions']['Insert'];
+type DatabaseNote = Database['public']['Tables']['notes']['Row'];
+type DatabaseNoteInsert = Database['public']['Tables']['notes']['Insert'];
+
+/**
+ * Phase 4.1: Skills CRUD Operations
+ */
+
+/**
+ * Get all skills for a user
+ */
+export async function getSkillsByUser(userId: string): Promise<DatabaseSkill[]> {
+  if (!isAdminClientAvailable()) {
+    logger.warn('Supabase not available, returning empty skills array');
+    return [];
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return [];
+
+  const { data, error } = await admin
+    .from('skills')
+    .select('*')
+    .eq('user_id', userId)
+    .order('mastery', { ascending: false });
+
+  if (error) {
+    logger.error('Error getting skills:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Update skill mastery level
+ */
+export async function updateSkillMastery(
+  userId: string,
+  skillId: string,
+  masteryDelta: number
+): Promise<void> {
+  if (!isAdminClientAvailable()) {
+    logger.warn('Supabase not available, skipping skill update');
+    return;
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return;
+
+  // Get current skill
+  const { data: skill, error: fetchError } = await admin
+    .from('skills')
+    .select('mastery')
+    .eq('id', skillId)
+    .single();
+
+  if (fetchError) {
+    logger.error('Error fetching skill:', fetchError);
+    return;
+  }
+
+  // Calculate new mastery (0-100)
+  const newMastery = Math.max(0, Math.min(100, (skill?.mastery || 0) + masteryDelta));
+
+  // Update skill
+  const { error: updateError } = await admin
+    .from('skills')
+    .update({
+      mastery: newMastery,
+      last_seen: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', skillId);
+
+  if (updateError) {
+    logger.error('Error updating skill:', updateError);
+    return;
+  }
+
+  logger.info(`Updated skill ${skillId} mastery to ${newMastery}`);
+
+  // Check for level up
+  await checkLevelUp(userId);
+}
+
+/**
+ * Create a new skill for a user
+ */
+export async function createSkill(
+  userId: string,
+  domain: string,
+  category: string,
+  displayName: string,
+  initialMastery: number = 0
+): Promise<string | null> {
+  if (!isAdminClientAvailable()) {
+    logger.warn('Supabase not available, skipping skill creation');
+    return null;
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return null;
+
+  const skillData: DatabaseSkillInsert = {
+    user_id: userId,
+    domain,
+    category,
+    display_name: displayName,
+    mastery: initialMastery,
+    confidence: initialMastery < 30 ? 'low' : initialMastery < 70 ? 'medium' : 'high',
+    last_seen: new Date().toISOString(),
+    decay_rate: 0.05, // Default decay rate
+    total_attempts: 0,
+    correct_attempts: 0
+  };
+
+  const { data, error } = await admin
+    .from('skills')
+    .insert(skillData)
+    .select('id')
+    .single();
+
+  if (error) {
+    logger.error('Error creating skill:', error);
+    return null;
+  }
+
+  return data?.id || null;
+}
+
+/**
+ * Check if user should level up based on skill mastery
+ */
+export async function checkLevelUp(userId: string): Promise<void> {
+  if (!isAdminClientAvailable()) return;
+
+  const admin = getAdminClient();
+  if (!admin) return;
+
+  // Get all user skills
+  const { data: skills } = await admin
+    .from('skills')
+    .select('mastery')
+    .eq('user_id', userId);
+
+  if (!skills || skills.length === 0) return;
+
+  // Calculate average mastery
+  const avgMastery = skills.reduce((sum, s) => sum + s.mastery, 0) / skills.length;
+
+  // Calculate new level (0-100 mastery = levels 0-10)
+  const newLevel = Math.floor(avgMastery / 10);
+
+  // Get current user level
+  const { data: user } = await admin
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .single();
+
+  if (!user) return;
+
+  // Update user level
+  await admin
+    .from('users')
+    .update({
+      // Note: 'level' column doesn't exist in current schema, would need to be added
+      // For now, we'll just log it
+    })
+    .eq('id', userId);
+
+  logger.info(`User ${userId} should be level ${newLevel} (avg mastery: ${avgMastery.toFixed(1)})`);
+}
+
+/**
+ * Phase 4.2: Session Recording
+ */
+
+/**
+ * Record a learning session
+ */
+export async function recordSession(sessionData: {
+  userId: string;
+  missionType: string;
+  sunnyGoal: string;
+  targetSkillId?: string;
+  difficultyLevel?: string;
+  questionFormat?: string;
+  questionsAttempted: number;
+  questionsCorrect: number;
+  masteryBefore?: number;
+  masteryAfter?: number;
+  durationSeconds: number;
+  attentionQuality?: string;
+  sunnySummary?: string;
+}): Promise<string | null> {
+  if (!isAdminClientAvailable()) {
+    logger.warn('Supabase not available, skipping session recording');
+    return null;
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return null;
+
+  const sessionInsert: DatabaseSessionInsert = {
+    user_id: sessionData.userId,
+    started_at: new Date(Date.now() - sessionData.durationSeconds * 1000).toISOString(),
+    ended_at: new Date().toISOString(),
+    duration_seconds: sessionData.durationSeconds,
+    mission_type: sessionData.missionType,
+    sunny_goal: sessionData.sunnyGoal,
+    target_skill_id: sessionData.targetSkillId || null,
+    difficulty_level: sessionData.difficultyLevel || null,
+    question_format: sessionData.questionFormat || null,
+    questions_attempted: sessionData.questionsAttempted,
+    questions_correct: sessionData.questionsCorrect,
+    mastery_before: sessionData.masteryBefore || null,
+    mastery_after: sessionData.masteryAfter || null,
+    mastery_delta: sessionData.masteryAfter && sessionData.masteryBefore
+      ? sessionData.masteryAfter - sessionData.masteryBefore
+      : null,
+    attention_quality: sessionData.attentionQuality || null,
+    sunny_summary: sessionData.sunnySummary || null,
+    status: 'completed'
+  };
+
+  const { data, error } = await admin
+    .from('sessions')
+    .insert(sessionInsert)
+    .select('id')
+    .single();
+
+  if (error) {
+    logger.error('Error recording session:', error);
+    return null;
+  }
+
+  logger.info(`Recorded session ${data?.id} for user ${sessionData.userId}`);
+  return data?.id || null;
+}
+
+/**
+ * Get recent sessions for a user
+ */
+export async function getRecentSessions(
+  userId: string,
+  limit: number = 10
+): Promise<DatabaseSession[]> {
+  if (!isAdminClientAvailable()) {
+    return [];
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return [];
+
+  const { data, error } = await admin
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logger.error('Error getting recent sessions:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Phase 4.3: Sunny Notes
+ */
+
+/**
+ * Add a note from Sunny about a student
+ */
+export async function addSunnyNote(
+  userId: string,
+  comment: string,
+  noteType: 'observation' | 'milestone' | 'concern',
+  relatedSkillId?: string,
+  priority: 'low' | 'medium' | 'high' = 'medium',
+  actionable: boolean = false
+): Promise<string | null> {
+  if (!isAdminClientAvailable()) {
+    logger.warn('Supabase not available, skipping note creation');
+    return null;
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return null;
+
+  const noteData: DatabaseNoteInsert = {
+    user_id: userId,
+    sunny_comment: comment,
+    related_skill_id: relatedSkillId || null,
+    note_type: noteType,
+    priority,
+    actionable,
+    timestamp: new Date().toISOString()
+  };
+
+  const { data, error } = await admin
+    .from('notes')
+    .insert(noteData)
+    .select('id')
+    .single();
+
+  if (error) {
+    logger.error('Error adding Sunny note:', error);
+    return null;
+  }
+
+  logger.info(`Added Sunny note for user ${userId}: ${comment.substring(0, 50)}...`);
+  return data?.id || null;
+}
+
+/**
+ * Get all notes for a user
+ */
+export async function getSunnyNotes(
+  userId: string,
+  noteType?: 'observation' | 'milestone' | 'concern'
+): Promise<DatabaseNote[]> {
+  if (!isAdminClientAvailable()) {
+    return [];
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return [];
+
+  let query = admin
+    .from('notes')
+    .select('*')
+    .eq('user_id', userId)
+    .order('timestamp', { ascending: false });
+
+  if (noteType) {
+    query = query.eq('note_type', noteType);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    logger.error('Error getting Sunny notes:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Get actionable notes for a user (high priority concerns)
+ */
+export async function getActionableNotes(userId: string): Promise<DatabaseNote[]> {
+  if (!isAdminClientAvailable()) {
+    return [];
+  }
+
+  const admin = getAdminClient();
+  if (!admin) return [];
+
+  const { data, error } = await admin
+    .from('notes')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('actionable', true)
+    .eq('priority', 'high')
+    .order('timestamp', { ascending: false })
+    .limit(5);
+
+  if (error) {
+    logger.error('Error getting actionable notes:', error);
+    return [];
+  }
+
+  return data || [];
+}
