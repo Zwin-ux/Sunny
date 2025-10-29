@@ -67,11 +67,18 @@ export function DemoWaitlistCTA() {
 
           <div className="space-y-4">
             <Button
+              onClick={() => window.location.href = '/'}
+              className="w-full max-w-md bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
+            >
+              Back to Home →
+            </Button>
+
+            <Button
               onClick={() => window.location.href = '/demo'}
               variant="outline"
               className="w-full max-w-md"
             >
-              Try Demo Again →
+              Try Demo Again
             </Button>
 
             <div className="text-center">

@@ -128,11 +128,11 @@ export default function LandingPage() {
               transition={{ delay: 0.1 }}
               whileHover={{ y: -5 }}
               className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push('/dashboard')}
             >
-              <div className="text-4xl mb-3">🎯</div>
-              <h3 className="text-xl font-bold mb-2">Start Learning</h3>
-              <p className="text-gray-600">Chat with Sunny and start a new lesson</p>
+              <div className="text-4xl mb-3">📊</div>
+              <h3 className="text-xl font-bold mb-2">Go to Dashboard</h3>
+              <p className="text-gray-600">Your learning home base</p>
             </motion.div>
 
             <motion.div
@@ -141,11 +141,11 @@ export default function LandingPage() {
               transition={{ delay: 0.2 }}
               whileHover={{ y: -5 }}
               className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/demo')}
             >
-              <div className="text-4xl mb-3">📊</div>
-              <h3 className="text-xl font-bold mb-2">View Dashboard</h3>
-              <p className="text-gray-600">See your progress and achievements</p>
+              <div className="text-4xl mb-3">✨</div>
+              <h3 className="text-xl font-bold mb-2">Try Demo</h3>
+              <p className="text-gray-600">See Sunny's AI in action</p>
             </motion.div>
 
             <motion.div
@@ -156,9 +156,9 @@ export default function LandingPage() {
               className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
               onClick={() => router.push('/chat')}
             >
-              <div className="text-4xl mb-3">🎮</div>
-              <h3 className="text-xl font-bold mb-2">Continue Mission</h3>
-              <p className="text-gray-600">Pick up where you left off</p>
+              <div className="text-4xl mb-3">💬</div>
+              <h3 className="text-xl font-bold mb-2">Start Chat</h3>
+              <p className="text-gray-600">Talk with Sunny directly</p>
             </motion.div>
           </div>
 
@@ -170,11 +170,11 @@ export default function LandingPage() {
             className="text-center"
           >
             <Button
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push('/dashboard')}
               size="lg"
               className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-12 py-7 text-xl font-bold rounded-xl border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-all"
             >
-              Let's Learn!
+              Go to Dashboard
               <ArrowRight className="ml-2 w-6 h-6" />
             </Button>
           </motion.div>
