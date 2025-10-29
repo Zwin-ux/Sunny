@@ -59,7 +59,7 @@ export default function LandingPage() {
   };
 
   const handleTryDemo = () => {
-    router.push('/chat');
+    router.push('/demo');
   };
 
   const handleLogout = () => {
