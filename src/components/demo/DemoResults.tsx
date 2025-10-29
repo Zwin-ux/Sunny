@@ -8,8 +8,11 @@ import { SunnyVoice } from '@/components/voice/SunnyVoice';
 import { ProgressBar } from '@/components/demo/ProgressBar';
 import { BadgeDisplay } from '@/components/demo/BadgeDisplay';
 import { WorldUnlock } from '@/components/demo/WorldUnlock';
+import { LearningAppsLauncher } from '@/components/demo/LearningAppsLauncher';
+import { LearningPortfolio } from '@/components/demo/LearningPortfolio';
+import { LearningTaskManager } from '@/components/demo/LearningTaskManager';
 import { Answer, Badge } from '@/types/demo';
-import { analyzePerformance, generateAnalysisMessage } from '@/lib/demo-insights';
+import { analyzePerformance, generateAnalysisMessage, calculateFocusLevel } from '@/lib/demo-insights';
 import { 
   initializeGameProgress, 
   updateGameProgress, 
@@ -143,6 +146,40 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
           />
         </div>
 
+        {/* Learning OS Dashboard */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Learning OS Dashboard</h2>
+          <p className="text-gray-600 mb-6">
+            Experience the future of adaptive learning - a complete ecosystem designed just for you.
+          </p>
+        </div>
+
+        {/* Learning Apps Launcher */}
+        <div className="mb-6">
+          <LearningAppsLauncher
+            currentXP={gameProgress.xp}
+            onAppClick={(appId) => console.log('App clicked:', appId)}
+          />
+        </div>
+
+        {/* Two Column Layout */}
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          {/* Learning Portfolio */}
+          <LearningPortfolio
+            answers={answers}
+            badges={gameProgress.badges.filter(b => b.earned).length}
+            worlds={gameProgress.unlockedWorlds.length}
+            xp={gameProgress.xp}
+          />
+
+          {/* Task Manager */}
+          <LearningTaskManager
+            answers={answers}
+            sessionTime={Math.round(totalTime / 1000)}
+            focusLevel={calculateFocusLevel(answers)}
+          />
+        </div>
+
         {/* Sunny's Analysis */}
         <Card className="p-6 mb-6 bg-yellow-50 border-2 border-yellow-200">
           <div className="flex items-start justify-between gap-4">
@@ -157,30 +194,6 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
             <SunnyVoice text={analysisMessage} autoPlay={false} />
           </div>
         </Card>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {insights.recommendedLevel}
-            </p>
-            <p className="text-sm text-gray-600">Your Level</p>
-          </Card>
-
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {insights.learningSpeed}
-            </p>
-            <p className="text-sm text-gray-600">Learning Speed</p>
-          </Card>
-
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {Math.round(totalTime / 1000)}s
-            </p>
-            <p className="text-sm text-gray-600">Total Time</p>
-          </Card>
-        </div>
 
         {/* CTA */}
         <div className="text-center">
