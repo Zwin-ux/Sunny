@@ -184,7 +184,7 @@ export default function DashboardPage() {
           <LearningAppsLauncher
             currentXP={missionsCompleted * 50}
             onAppClick={(appId) => {
-              if (appId === 'math-lab') window.location.href = '/chat';
+              if (appId === 'math-lab') window.location.href = '/math-lab';
               else if (appId === 'demo') window.location.href = '/demo';
               else console.log('App clicked:', appId);
             }}
