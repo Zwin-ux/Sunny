@@ -5,6 +5,9 @@
 export type DifficultyLevel = 'beginner' | 'easy' | 'medium' | 'hard';
 
 export type MathTopic = 'addition' | 'subtraction' | 'multiplication' | 'division';
+export type EnglishTopic = 'vocabulary' | 'grammar' | 'reading' | 'writing';
+export type LogicTopic = 'patterns' | 'sequences' | 'logic' | 'programming';
+export type LearningTopic = MathTopic | EnglishTopic | LogicTopic;
 
 export type DemoStep = 'welcome' | 'check' | 'mission' | 'results' | 'waitlist';
 
@@ -14,7 +17,7 @@ export interface Question {
   answers: string[];
   correctIndex: number;
   difficulty: DifficultyLevel;
-  topic: MathTopic;
+  topic: LearningTopic;
   voiceText?: string;
   hint?: string;
 }
@@ -25,7 +28,7 @@ export interface Answer {
   correct: boolean;
   timeSpent: number; // milliseconds
   difficulty: DifficultyLevel;
-  topic: MathTopic;
+  topic: LearningTopic;
 }
 
 export interface DemoState {

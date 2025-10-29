@@ -1,11 +1,14 @@
 import { Question, DifficultyLevel } from '@/types/demo';
+import { englishQuestions, logicQuestions } from './demo-questions-expanded';
 
 /**
  * Question bank for demo experience
  * Organized by difficulty level and topic
+ * Now includes Math, English, and Critical Thinking/Programming
  */
 
-export const questionBank: Record<DifficultyLevel, Question[]> = {
+// Original Math Questions
+const mathQuestions: Record<DifficultyLevel, Question[]> = {
   beginner: [
     {
       id: 'beg-add-1',
@@ -219,11 +222,35 @@ export const questionBank: Record<DifficultyLevel, Question[]> = {
   ],
 };
 
+// Combine all question banks (Math, English, Logic/Programming)
+export const questionBank: Record<DifficultyLevel, Question[]> = {
+  beginner: [
+    ...mathQuestions.beginner,
+    ...englishQuestions.beginner,
+    ...logicQuestions.beginner,
+  ],
+  easy: [
+    ...mathQuestions.easy,
+    ...englishQuestions.easy,
+    ...logicQuestions.easy,
+  ],
+  medium: [
+    ...mathQuestions.medium,
+    ...englishQuestions.medium,
+    ...logicQuestions.medium,
+  ],
+  hard: [
+    ...mathQuestions.hard,
+    ...englishQuestions.hard,
+    ...logicQuestions.hard,
+  ],
+};
+
 /**
  * Get a random question for a given difficulty level
  */
 export function getRandomQuestion(difficulty: DifficultyLevel, exclude: string[] = []): Question {
-  const questions = questionBank[difficulty].filter(q => !exclude.includes(q.id));
+  const questions = questionBank[difficulty].filter((q: Question) => !exclude.includes(q.id));
   
   if (questions.length === 0) {
     // Fallback to any question from that difficulty
