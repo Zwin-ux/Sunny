@@ -3,7 +3,7 @@ import { useLearningSession } from '../contexts/LearningSessionContext';
 import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile } from '../types/chat';
 import { Lesson, LessonContent, MediaContent, QuizQuestion, ContentType } from '../types/lesson';
 import LessonRepository from '../lib/lessons/LessonRepository';
-import intentParser, { Intent } from '../lib/nlu/IntentParser';
+import intentParser, { Intent, IntentType } from '../lib/nlu/IntentParser';
 import { v4 as uuidv4 } from 'uuid';
 import { generateMiniChallenge, generateFeedback, generateAgenticSunnyResponse } from '../lib/sunny-ai';
 import { globalAgentManager } from '../lib/agents';
@@ -12,6 +12,8 @@ import { validateUserInput, getBlockedInputMessage, logSafetyIncident, detectPro
 import { validateAIResponse, addEmojisIfNeeded } from '../lib/safety/output-validator';
 // Learning OS imports
 import { interpretIntent, interpretCombined, type RoutingDecision } from '../lib/response-interpreter';
+// Game system imports
+import type { DifficultyLevel, GameType } from '../types/game';
 
 export const useLearningChat = (onNewMessage: (message: Message) => void, studentProfile: StudentProfile) => {
   const {
@@ -32,6 +34,12 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     isComplete: boolean;
   } | null>(null);
   const [pendingRouting, setPendingRouting] = useState<RoutingDecision | null>(null);
+  // Game integration state
+  const [pendingGameRequest, setPendingGameRequest] = useState<{
+    topic: string;
+    difficulty?: DifficultyLevel;
+    gameType?: GameType;
+  } | null>(null);
 
   // Sync with learning session context
   useEffect(() => {
@@ -229,6 +237,19 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
         const intent = await intentParser.parse(safeMessage);
         console.log('Detected intent:', intent.type, intent.app);
 
+        // 🎮 Check for game requests
+        if (intent.type === IntentType.game_time || message.toLowerCase().includes('play game') || message.toLowerCase().includes('game')) {
+          console.log('🎮 Game request detected!');
+          const topic = intent.entities.topic || 'math';
+          const difficulty = intent.entities.difficulty as DifficultyLevel || studentProfile.difficulty || 'easy';
+
+          setPendingGameRequest({
+            topic,
+            difficulty,
+            gameType: undefined, // Let game system choose
+          });
+        }
+
         if (intent.app?.shouldNavigate) {
           const routing = interpretIntent(intent);
           console.log('🚀 App launch detected:', routing);
@@ -348,6 +369,11 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     setPendingRouting(null);
   }, []);
 
+  // Clear pending game request (called after game starts)
+  const clearPendingGameRequest = useCallback(() => {
+    setPendingGameRequest(null);
+  }, []);
+
   return {
     isProcessing,
     handleUserMessage,
@@ -358,5 +384,8 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     // Learning OS routing
     pendingRouting,
     clearPendingRouting,
+    // Game integration
+    pendingGameRequest,
+    clearPendingGameRequest,
   };
 };

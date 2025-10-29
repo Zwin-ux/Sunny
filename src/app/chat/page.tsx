@@ -17,6 +17,7 @@ import { Sparkles, Award, Mic, MicOff, Settings, Lightbulb, BookOpen, XCircle } 
 import { useLearningChat } from '@/hooks/useLearningChat';
 import { useLearningSession } from '@/contexts/LearningSessionContext';
 import { useAppLauncher } from '@/hooks/useAppLauncher';
+import { useGameSession } from '@/hooks/useGameSession';
 
 
 // Utils
@@ -59,6 +60,7 @@ interface SunnyCharacterProps {
 const EmotionSelector = dynamic(() => import('@/components/emotion-selector').then(mod => mod.default as React.FC<EmotionSelectorProps>), { ssr: false });
 const SunnyCharacter = dynamic(() => import('@/components/sunny-character').then(mod => mod.default as React.FC<SunnyCharacterProps>), { ssr: false });
 const ContentRenderer = dynamic(() => import('@/components/interactive/ContentRenderer'), { ssr: false });
+const GameContainer = dynamic(() => import('@/components/games/GameContainer'), { ssr: false });
 
 // #endregion
 
@@ -165,10 +167,13 @@ function Chat() {
   }, [speak]);
   
   // Use the learning chat hook
-  const { handleUserMessage, isProcessing, pendingRouting, clearPendingRouting } = useLearningChat(onNewMessage, studentProfile);
+  const { handleUserMessage, isProcessing, pendingRouting, clearPendingRouting, pendingGameRequest, clearPendingGameRequest } = useLearningChat(onNewMessage, studentProfile);
 
   // Use app launcher for navigation
   const { launchAppWithDelay } = useAppLauncher();
+
+  // Use game session for in-chat games
+  const { isGameActive, currentGame, startGame, endGame, getPerformanceSummary } = useGameSession(studentProfile.name);
 
   // Watch for pending routing and navigate
   useEffect(() => {
@@ -185,6 +190,28 @@ function Chat() {
       });
     }
   }, [pendingRouting, launchAppWithDelay, clearPendingRouting]);
+
+  // Watch for pending game requests and start game
+  useEffect(() => {
+    if (pendingGameRequest && !isGameActive) {
+      console.log('🎮 Starting game:', pendingGameRequest);
+
+      // Start the game
+      startGame(
+        pendingGameRequest.topic,
+        pendingGameRequest.difficulty,
+        pendingGameRequest.gameType
+      ).then((result) => {
+        if (result.success) {
+          console.log('✅ Game started successfully');
+        } else {
+          console.error('❌ Failed to start game:', result.error);
+          toast.error('Failed to start game. Please try again!');
+        }
+        clearPendingGameRequest();
+      });
+    }
+  }, [pendingGameRequest, isGameActive, startGame, clearPendingGameRequest]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !voiceMode) return;
@@ -264,9 +291,37 @@ function Chat() {
     if (!voiceMode) setVoiceMode(true);
     setIsListening(prev => !prev);
   };
-  
+
   const handleNext = () => nextStep?.();
   const handlePrevious = () => previousStep?.();
+
+  // Handle game completion
+  const handleGameComplete = useCallback(async (performance: any) => {
+    console.log('🎮 Game completed with performance:', performance);
+
+    // Show completion message
+    const completionMessage: AssistantMessage = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      type: 'assistant',
+      content: `Great job! You completed the game with ${Math.round(performance.accuracy * 100)}% accuracy! 🎉`,
+      timestamp: Date.now(),
+      name: 'Sunny',
+    };
+    onNewMessage(completionMessage);
+
+    // End the game
+    endGame();
+
+    // Update student profile points
+    const pointsEarned = Math.round(performance.accuracy * 100);
+    setStudentProfile(prev => ({
+      ...prev,
+      points: prev.points + pointsEarned
+    }));
+
+    toast.success(`You earned ${pointsEarned} points!`);
+  }, [onNewMessage, endGame]);
   const handleQuizAnswer = (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => {
     // handleChatQuizAnswer(isCorrect, questionId, challenge, userAnswer);
   };
@@ -661,6 +716,18 @@ function Chat() {
           <span>{voiceError}</span>
           <button onClick={() => setVoiceError(null)} className="ml-4 text-red-500 hover:text-red-700 font-bold" aria-label="Dismiss error">&times;</button>
         </motion.div>
+      )}
+
+      {/* Game Overlay */}
+      {isGameActive && currentGame && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border-4 border-black shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <GameContainer
+              studentId={studentProfile.name}
+              onComplete={handleGameComplete}
+            />
+          </div>
+        </div>
       )}
       </div>
     </>
