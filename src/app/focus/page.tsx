@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Clock, Target, Trophy, ArrowLeft, Play } from 'lucide-react';
@@ -19,7 +19,7 @@ import { SessionReview } from '@/components/focus-sessions/SessionReview';
 import type { FocusSession } from '@/types/focus-session';
 import { recordSession, addSunnyNote } from '@/lib/db';
 
-export default function FocusPage() {
+function FocusPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
@@ -420,5 +420,13 @@ export default function FocusPage() {
         </motion.div>
       </div>
     </AppShell>
+  );
+}
+
+export default function FocusPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <FocusPageContent />
+    </Suspense>
   );
 }
