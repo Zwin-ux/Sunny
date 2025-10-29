@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Gamepad2, Trophy, Star, ArrowLeft } from 'lucide-react';
@@ -86,7 +86,7 @@ const GAME_OPTIONS: GameOption[] = [
   }
 ];
 
-export default function GamesPage() {
+function GamesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
@@ -329,5 +329,13 @@ export default function GamesPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function GamesPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <GamesPageContent />
+    </Suspense>
   );
 }
