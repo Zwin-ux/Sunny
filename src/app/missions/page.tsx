@@ -7,6 +7,9 @@ import { Target, Clock, TrendingUp, Zap, Brain, Book, ArrowLeft } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { AppShell } from '@/components/ui/TabNavigation';
 import { getCurrentUser } from '@/lib/auth';
+import { useXP } from '@/contexts/XPContext';
+import { loadDailyMissions, markMissionComplete, getDailyResetTimestamp, getWeeklyChallenge, incrementWeeklyProgress, type DailyMissionMeta } from '@/lib/missions';
+import { recordXP } from '@/lib/persistence';
 
 interface Mission {
   id: string;
@@ -40,6 +43,10 @@ export default function MissionsPage() {
   const [studentAnswer, setStudentAnswer] = useState('');
   const [feedback, setFeedback] = useState<any>(null);
   const [isGrading, setIsGrading] = useState(false);
+  const [dailyMissions, setDailyMissions] = useState<DailyMissionMeta[]>([])
+  const [resetMs, setResetMs] = useState<number>(getDailyResetTimestamp() - Date.now())
+  const [weekly, setWeekly] = useState(getWeeklyChallenge())
+  const { addXP, incrementMissions } = useXP();
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -48,6 +55,12 @@ export default function MissionsPage() {
       return;
     }
     setUser(currentUser);
+    loadDailyMissions(currentUser.id || currentUser.name).then(setDailyMissions)
+
+    const i = setInterval(() => {
+      setResetMs(Math.max(0, getDailyResetTimestamp() - Date.now()))
+    }, 1000)
+    return () => clearInterval(i)
   }, [router]);
 
   const startMission = async () => {
@@ -112,6 +125,22 @@ export default function MissionsPage() {
       setStudentAnswer('');
     } else {
       // Mission complete!
+      try {
+        // simple XP reward: correct answers * 10 + base 20
+        const correct = feedback?.correctness === 'correct' ? 1 : 0
+        const estimated = (currentMission.questions.length * 5) + (correct * 10)
+        addXP(estimated, 'Mission completed')
+        recordXP(user.id || user.name, estimated, 'Mission completed')
+        incrementMissions()
+        // mark a daily mission complete if matching
+        const dm = dailyMissions.find(m => currentMission.sunny_goal?.toLowerCase().includes(m.category.toLowerCase()))
+        if (dm && !dm.completed) {
+          markMissionComplete(dm.id, user.id || user.name)
+          loadDailyMissions(user.id || user.name).then(setDailyMissions)
+          incrementWeeklyProgress(1)
+          setWeekly(getWeeklyChallenge())
+        }
+      } catch {}
       setCurrentMission(null);
       setCurrentQuestionIndex(0);
       setFeedback(null);
@@ -264,6 +293,15 @@ export default function MissionsPage() {
     );
   }
 
+  // helpers
+  const fmt = (ms: number) => {
+    const s = Math.floor(ms / 1000)
+    const hh = String(Math.floor(s / 3600)).padStart(2, '0')
+    const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0')
+    const ss = String(s % 60).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
+  }
+
   // Mission Selection View
   return (
     <AppShell>
@@ -279,6 +317,55 @@ export default function MissionsPage() {
           <p className="text-xl text-gray-600">
             Sunny picks the perfect skill for you to work on next
           </p>
+        </motion.div>
+
+        {/* Daily Missions */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white p-8 rounded-2xl border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Today’s Missions</h2>
+            <div className="text-sm font-bold px-3 py-1 border-2 border-black rounded-full bg-yellow-100">Resets in {fmt(resetMs)}</div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {dailyMissions.map(m => (
+              <div key={m.id} className={`p-4 rounded-xl border-2 ${m.completed ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-bold">{m.category}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border-2 ${m.difficulty==='easy'?'bg-blue-100': m.difficulty==='medium'?'bg-yellow-100':'bg-red-100'}`}>{m.difficulty}</span>
+                </div>
+                <div className="font-semibold mb-2">{m.title}</div>
+                <div className="text-xs text-gray-600 mb-3">Reward: {m.xpReward} XP</div>
+                <Button disabled={m.completed} size="sm" className="w-full" onClick={startMission}>
+                  {m.completed ? 'Completed ✓' : 'Start Mission'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Weekly Challenge */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-8"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+              <h3 className="font-bold">Weekly Challenge</h3>
+            </div>
+            <div className="text-sm font-bold">+{weekly.xpReward} XP</div>
+          </div>
+          <p className="text-sm text-gray-700 mb-3">{weekly.description}</p>
+          <div className="w-full bg-white h-3 rounded-full border-2 border-black overflow-hidden">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${weekly.progress}%` }} className="h-full bg-purple-400" />
+          </div>
+          <div className="text-xs mt-1 font-semibold">{weekly.progress}%</div>
         </motion.div>
 
         {/* Start Mission Card */}

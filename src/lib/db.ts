@@ -529,6 +529,31 @@ export async function getRecentSessions(
 }
 
 /**
+ * Get recent game sessions for a user (via student profile)
+ */
+export async function getRecentGameSessions(userId: string, limit: number = 20): Promise<any[]> {
+  if (!isAdminClientAvailable()) {
+    return []
+  }
+  const admin = getAdminClient();
+  if (!admin) return []
+  // Find student profile id
+  const { data: profile } = await admin.from('student_profiles').select('id').eq('user_id', userId).single()
+  if (!profile?.id) return []
+  const { data, error } = await admin
+    .from('game_sessions')
+    .select('*')
+    .eq('student_id', profile.id)
+    .order('started_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    logger.error('Error getting recent game sessions:', error)
+    return []
+  }
+  return data || []
+}
+
+/**
  * Phase 4.3: Sunny Notes
  */
 

@@ -6,6 +6,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "../components/theme-provider"
 import { LanguageProvider } from "../contexts/LanguageContext"
 import { LearningSessionProvider } from "../contexts/LearningSessionContext"
+import { XPProvider } from "../contexts/XPContext"
 import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -26,8 +27,10 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <LanguageProvider>
             <LearningSessionProvider>
-              {children}
-              <Toaster position="top-center" richColors />
+              <XPProvider>
+                {children}
+                <Toaster position="top-center" richColors />
+              </XPProvider>
             </LearningSessionProvider>
           </LanguageProvider>
         </ThemeProvider>

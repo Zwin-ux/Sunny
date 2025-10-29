@@ -8,7 +8,7 @@
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { MessageCircle, Gamepad2, BookOpen, FlaskConical, TrendingUp } from 'lucide-react';
+import { MessageCircle, Gamepad2, BookOpen, FlaskConical, TrendingUp, Target, Settings } from 'lucide-react';
 
 export interface Tab {
   id: string;
@@ -37,6 +37,12 @@ const TABS: Tab[] = [
     route: '/stories'
   },
   {
+    id: 'missions',
+    label: 'Missions',
+    icon: <Target className="w-5 h-5" />,
+    route: '/missions'
+  },
+  {
     id: 'focus',
     label: 'Practice',
     icon: <FlaskConical className="w-5 h-5" />,
@@ -47,6 +53,13 @@ const TABS: Tab[] = [
     label: 'Progress',
     icon: <TrendingUp className="w-5 h-5" />,
     route: '/progress'
+  }
+  ,
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: <Settings className="w-5 h-5" />,
+    route: '/settings'
   }
 ];
 

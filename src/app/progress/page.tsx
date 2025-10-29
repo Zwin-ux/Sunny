@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { AppShell } from '@/components/ui/TabNavigation';
 import { getCurrentUser } from '@/lib/auth';
 import { getSkillsByUser, getRecentSessions } from '@/lib/db';
+import AchievementGallery from '@/components/gamification/AchievementGallery';
+import dynamic from 'next/dynamic';
+import { useXP } from '@/contexts/XPContext';
+import StreakCalendar from '@/components/gamification/StreakCalendar';
+import LiveXPFeed from '@/components/gamification/LiveXPFeed';
+import { getRecentGameSessions } from '@/lib/db';
 
 interface Skill {
   id: string;
@@ -39,6 +45,8 @@ export default function ProgressPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gameSessions, setGameSessions] = useState<any[]>([])
+  const { xp, level, streak, totalMissions } = useXP();
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -53,12 +61,14 @@ export default function ProgressPage() {
   const loadProgressData = async (userId: string) => {
     setLoading(true);
     try {
-      const [skillsData, sessionsData] = await Promise.all([
+      const [skillsData, sessionsData, gamesData] = await Promise.all([
         getSkillsByUser(userId),
-        getRecentSessions(userId, 10)
+        getRecentSessions(userId, 10),
+        getRecentGameSessions(userId, 20)
       ]);
       setSkills(skillsData);
       setSessions(sessionsData);
+      setGameSessions(gamesData)
     } catch (error) {
       console.error('Error loading progress:', error);
     } finally {
@@ -322,6 +332,54 @@ export default function ProgressPage() {
           </motion.div>
         </div>
 
+        {/* Charts */}
+        <div className="grid lg:grid-cols-2 gap-8 mt-8">
+          <Charts.ProgressOverTime data={sessions} />
+          <Charts.TimePerSubject data={sessions} games={gameSessions} />
+          <Charts.SkillMastery data={skills} />
+          <Charts.ActivityDistribution sessions={sessions} games={gameSessions} />
+        </div>
+
+        {/* Achievements + Download */}
+        <div className="mt-8 grid lg:grid-cols-3 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="lg:col-span-2 bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Achievements</h3>
+            </div>
+            <AchievementGallery
+              stats={{
+                totalPoints: xp,
+                level,
+                currentStreak: streak,
+                lessonsCompleted: totalMissions,
+                correctAnswers: totalQuestionsCorrect,
+                totalAnswers: totalQuestionsAttempted,
+                topicsExplored: skills.length,
+                timeSpentMinutes: Math.round(sessions.reduce((s, v) => s + (v.duration_seconds || 0), 0) / 60),
+              }}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          >
+            <h3 className="text-xl font-bold mb-2">Reports</h3>
+            <p className="text-sm text-gray-600 mb-4">Download your learning data for sharing or review.</p>
+            <div className="mb-4"><StreakCalendar /></div>
+            <Button onClick={() => downloadReport(skills, sessions)} className="w-full">Download JSON</Button>
+          </motion.div>
+        </div>
+
+        <div className="mt-8">
+          <LiveXPFeed />
+        </div>
+
         {/* Call to Action */}
         {skills.length === 0 && sessions.length === 0 && (
           <motion.div
@@ -349,4 +407,67 @@ export default function ProgressPage() {
       </div>
     </AppShell>
   );
+}
+
+const ACTIVITY_COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa']
+
+function aggregateTimeBySubject(sessions: Session[], games?: any[]): { subject: string; minutes: number }[] {
+  const map = new Map<string, number>()
+  sessions.forEach(s => {
+    const subject = s.mission_type || 'Mission'
+    map.set(subject, (map.get(subject) || 0) + Math.round((s.duration_seconds || 0) / 60))
+  })
+  ;(games || []).forEach((g: any) => {
+    const subject = `Game: ${g.game_type}`
+    map.set(subject, (map.get(subject) || 0) + Math.round((g.duration || 0) / 60))
+  })
+  return Array.from(map.entries()).map(([subject, minutes]) => ({ subject, minutes }))
+}
+
+function aggregateMasteryByDomain(skills: Skill[]): { domain: string; mastery: number }[] {
+  const map = new Map<string, { total: number; count: number }>()
+  skills.forEach(s => {
+    const key = s.domain || s.category || 'General'
+    const cur = map.get(key) || { total: 0, count: 0 }
+    cur.total += s.mastery
+    cur.count += 1
+    map.set(key, cur)
+  })
+  return Array.from(map.entries()).map(([domain, v]) => ({ domain, mastery: Math.round(v.total / Math.max(1, v.count)) }))
+}
+
+function activityDistribution(sessions: Session[], games?: any[]): { name: string; value: number }[] {
+  const missionsCompleted = sessions.filter(s => s.status === 'completed').length
+  const missionsActive = sessions.length - missionsCompleted
+  const gameCount = (games || []).length
+  return [
+    { name: 'Missions Completed', value: missionsCompleted },
+    { name: 'Missions Active', value: missionsActive },
+    { name: 'Games', value: gameCount },
+  ]
+}
+
+function downloadReport(skills: Skill[], sessions: Session[]) {
+  const data = {
+    generatedAt: new Date().toISOString(),
+    skills,
+    sessions,
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `sunny-progress-${new Date().toISOString().slice(0,10)}.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+// Lazy charts wrapper
+const Charts = {
+  ProgressOverTime: dynamic(() => import('@/components/charts/ProgressOverTime'), { ssr: false }) as any,
+  TimePerSubject: dynamic(() => import('@/components/charts/TimePerSubject'), { ssr: false }) as any,
+  SkillMastery: dynamic(() => import('@/components/charts/SkillMastery'), { ssr: false }) as any,
+  ActivityDistribution: dynamic(() => import('@/components/charts/ActivityDistribution'), { ssr: false }) as any,
 }
