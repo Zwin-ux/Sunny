@@ -8,6 +8,7 @@ import { LearningAppsLauncher } from '@/components/demo/LearningAppsLauncher';
 import { motion } from 'framer-motion';
 import { LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useXP } from '@/contexts/XPContext';
 
 // For MVP, we'll use a hardcoded user ID. In a real app, this would come from auth.
 const MOCK_USER_ID = 'user-123';
@@ -15,8 +16,9 @@ const MOCK_USER_ID = 'user-123';
 export default function DashboardPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [streak, setStreak] = useState(0);
-  const [missionsCompleted, setMissionsCompleted] = useState(0);
+
+  // Use real XP data from XPContext
+  const { xp, level, streak, totalMissions } = useXP();
 
   useEffect(() => {
     async function fetchUser() {
@@ -25,9 +27,7 @@ export default function DashboardPage() {
         if (res.ok) {
           const userData: UserProfile = await res.json();
           setUser(userData);
-          // Mock data for demo
-          setStreak(3);
-          setMissionsCompleted(12);
+          // No more hardcoded stats - using XPContext!
         } else if (res.status === 404) {
           const newUser: UserProfile = {
             id: MOCK_USER_ID,
@@ -45,8 +45,7 @@ export default function DashboardPage() {
             body: JSON.stringify(newUser),
           });
           setUser(newUser);
-          setStreak(3);
-          setMissionsCompleted(12);
+          // No more hardcoded stats - using XPContext!
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -134,8 +133,8 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-700 text-sm font-semibold">Total XP</p>
-                <p className="text-5xl font-black text-blue-600 mt-1">{missionsCompleted * 50}</p>
-                <p className="text-gray-600 text-sm mt-1 font-medium">experience points</p>
+                <p className="text-5xl font-black text-blue-600 mt-1">{xp}</p>
+                <p className="text-gray-600 text-sm mt-1 font-medium">Level {level}</p>
               </div>
               <Image src="/rainbow.png" alt="XP" width={70} height={70} />
             </div>
@@ -150,7 +149,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-700 text-sm font-semibold">Missions</p>
-                <p className="text-5xl font-black text-green-600 mt-1">{missionsCompleted}</p>
+                <p className="text-5xl font-black text-green-600 mt-1">{totalMissions}</p>
                 <p className="text-gray-600 text-sm mt-1 font-medium">completed</p>
               </div>
               <Image src="/robot.png" alt="Missions" width={70} height={70} />
@@ -182,7 +181,7 @@ export default function DashboardPage() {
           className="mb-8"
         >
           <LearningAppsLauncher
-            currentXP={missionsCompleted * 50}
+            currentXP={xp}
             onAppClick={(appId) => {
               // Implemented apps
               if (appId === 'math-lab') {

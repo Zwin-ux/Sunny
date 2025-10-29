@@ -14,6 +14,8 @@ import { useXP } from '@/contexts/XPContext';
 import StreakCalendar from '@/components/gamification/StreakCalendar';
 import LiveXPFeed from '@/components/gamification/LiveXPFeed';
 import { getRecentGameSessions } from '@/lib/db';
+import { XPBreakdown } from '@/components/xp/XPBreakdown';
+import { Leaderboard } from '@/components/xp/Leaderboard';
 
 interface Skill {
   id: string;
@@ -379,6 +381,28 @@ export default function ProgressPage() {
         <div className="mt-8">
           <LiveXPFeed />
         </div>
+
+        {/* XP Breakdown Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="mt-8"
+        >
+          <h2 className="text-3xl font-black mb-6">XP Analytics</h2>
+          <XPBreakdown />
+        </motion.div>
+
+        {/* Leaderboard Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.0 }}
+          className="mt-8"
+        >
+          <h2 className="text-3xl font-black mb-6">Leaderboard</h2>
+          <Leaderboard />
+        </motion.div>
 
         {/* Call to Action */}
         {skills.length === 0 && sessions.length === 0 && (

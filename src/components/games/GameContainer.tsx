@@ -155,7 +155,27 @@ export function GameContainer({
     const latestPerformance = session.performance[session.performance.length - 1];
     if (latestPerformance) {
       onComplete?.(latestPerformance);
-      
+
+      // Auto-award XP for game session
+      if (typeof window !== 'undefined') {
+        // Base XP: 40 for completing the game (CHALLENGE_COMPLETED)
+        let totalXP = 40;
+
+        // Bonus XP: 10 per correct answer
+        totalXP += latestPerformance.questionsCorrect * 10;
+
+        // Time bonus: 1 XP per minute (capped at 60 per session)
+        const minutesPlayed = Math.min(60, Math.floor(latestPerformance.duration / 60));
+        totalXP += minutesPlayed;
+
+        window.dispatchEvent(new CustomEvent('sunny:xp', {
+          detail: {
+            amount: totalXP,
+            reason: `Completed ${topic} game! ${latestPerformance.questionsCorrect}/${latestPerformance.questionsAttempted} correct`
+          }
+        }));
+      }
+
       // Check if difficulty was adjusted
       const lastAdjustment = session.difficultyAdjustments[session.difficultyAdjustments.length - 1];
       if (lastAdjustment) {

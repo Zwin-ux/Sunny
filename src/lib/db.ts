@@ -270,8 +270,10 @@ type DatabaseNoteInsert = Database['public']['Tables']['notes']['Insert'];
  */
 export async function getSkillsByUser(userId: string): Promise<DatabaseSkill[]> {
   if (!isAdminClientAvailable()) {
-    logger.warn('Supabase not available, returning empty skills array');
-    return [];
+    logger.warn('Supabase not available, using demo mode mock skills');
+    // Return realistic mock skills in demo mode
+    const { generateMockSkills } = await import('./demo-mode');
+    return generateMockSkills();
   }
 
   const admin = getAdminClient();
@@ -507,7 +509,10 @@ export async function getRecentSessions(
   limit: number = 10
 ): Promise<DatabaseSession[]> {
   if (!isAdminClientAvailable()) {
-    return [];
+    // Return realistic mock sessions in demo mode
+    const { generateMockSessions } = await import('./demo-mode');
+    const allSessions = generateMockSessions();
+    return allSessions.slice(0, limit);
   }
 
   const admin = getAdminClient();
@@ -533,7 +538,15 @@ export async function getRecentSessions(
  */
 export async function getRecentGameSessions(userId: string, limit: number = 20): Promise<any[]> {
   if (!isAdminClientAvailable()) {
-    return []
+    // Return subset of mock sessions as game sessions in demo mode
+    const { generateMockSessions } = await import('./demo-mode');
+    const allSessions = generateMockSessions();
+    // Convert to game session format (simplified)
+    return allSessions.slice(0, limit).map(s => ({
+      ...s,
+      game_type: s.mission_type,
+      student_id: 'demo-student-1'
+    }));
   }
   const admin = getAdminClient();
   if (!admin) return []

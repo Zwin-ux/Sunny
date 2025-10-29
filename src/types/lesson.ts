@@ -90,8 +90,7 @@ export interface StudentProgress {
   lessons: {
     [lessonId: string]: LearningProgress;
   };
-  totalPoints: number;
-  level: number;
+  // NOTE: totalPoints and level removed - use XPContext as single source of truth
   achievements: string[];
   lastActive: string;
   learningPreferences: {

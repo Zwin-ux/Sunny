@@ -61,7 +61,7 @@ SELECT * FROM waitlist;
 
 ### Step 2: Create Waitlist API (20 min)
 
-Create `src/appvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv/api/waitlist/join/route.ts`:
+Create `src/appvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv/api/waitlist/join/route.ts`:
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';

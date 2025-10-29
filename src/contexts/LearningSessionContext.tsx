@@ -33,8 +33,7 @@ interface LearningPreferences {
 const defaultProgress: StudentProgress = {
   studentId: 'anonymous',
   lessons: {},
-  totalPoints: 0,
-  level: 1,
+  // totalPoints and level removed - XPContext is the single source of truth
   achievements: [],
   lastActive: new Date().toISOString(),
   learningPreferences: {

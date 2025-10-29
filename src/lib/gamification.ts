@@ -3,6 +3,8 @@
  * Manages points, badges, streaks, levels, and rewards
  */
 
+import { calculateLevel as calculateLevelFromXP, calculateXPForNextLevel } from '@/contexts/XPContext';
+
 export interface Badge {
   id: string;
   name: string;
@@ -187,17 +189,22 @@ export const BADGES: Badge[] = [
   }
 ];
 
-// Calculate level from points
+// Calculate level from points - now uses XPContext as single source of truth
 export function calculateLevel(points: number): number {
-  // Level up every 100 points, with increasing requirements
-  return Math.floor(Math.sqrt(points / 50)) + 1;
+  return calculateLevelFromXP(points);
 }
 
-// Calculate points needed for next level
+// Calculate points needed for next level - uses XPContext calculation
 export function pointsToNextLevel(currentPoints: number): number {
-  const currentLevel = calculateLevel(currentPoints);
-  const nextLevelPoints = Math.pow(currentLevel, 2) * 50;
-  return nextLevelPoints - currentPoints;
+  const currentLevel = calculateLevelFromXP(currentPoints);
+  const xpForNextLevel = calculateXPForNextLevel(currentLevel);
+  // Calculate how much XP has been accumulated in the current level
+  let totalXPForCurrentLevel = 0;
+  for (let i = 1; i < currentLevel; i++) {
+    totalXPForCurrentLevel += calculateXPForNextLevel(i);
+  }
+  const xpInCurrentLevel = currentPoints - totalXPForCurrentLevel;
+  return xpForNextLevel - xpInCurrentLevel;
 }
 
 // Award points for different actions

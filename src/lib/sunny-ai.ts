@@ -51,6 +51,145 @@ type ChallengeKey = 'math' | 'pattern' | 'robotics' | 'science' | 'general';
 // In-memory store for demo purposes - replace with proper state management
 const studentProfiles = new Map<string, StudentProfile>();
 
+// ============================================================================
+// Response Variation Templates - Prevent "Cookie Cutter" Responses
+// ============================================================================
+
+const RESPONSE_VARIATIONS = {
+  encouragement: [
+    "Amazing work! 🌟",
+    "You're doing fantastic! ✨",
+    "Great job, superstar! 🎉",
+    "Wow, you're on fire! 🔥",
+    "Incredible thinking! 💡",
+    "That's brilliant! 🌈",
+    "You're a learning champion! 🏆",
+    "Wonderful effort! Keep it up! 🎨",
+    "You're crushing it! 💪",
+    "Stellar performance! 🌠",
+    "You're a rockstar learner! 🎸",
+    "Phenomenal work! 🎯",
+    "Outstanding progress! 📈"
+  ],
+  correct_answer: [
+    "Yes! You got it! 🎯",
+    "Perfect! That's exactly right! ✅",
+    "Spot on! Great thinking! 💯",
+    "Correct! You're so smart! 🧠",
+    "Bingo! You nailed it! 🎊",
+    "That's right! Amazing! ⭐",
+    "Absolutely correct! Well done! 🎪",
+    "You're absolutely right! 🌟",
+    "Exactly! Brilliant answer! 💎",
+    "100% correct! You're a genius! 🚀",
+    "Bulls eye! Perfect answer! 🎭",
+    "Right on target! Excellent! 🏹",
+    "Correctamundo! You rock! 🎸"
+  ],
+  wrong_answer: [
+    "Nice try! Let's think about it differently. 🤔",
+    "Almost there! Want a hint? 💭",
+    "Good effort! Let me help you out. 🤝",
+    "Not quite, but I love your thinking! 💪",
+    "Let's explore this together! 🔍",
+    "That's okay! Mistakes help us learn! 🌱",
+    "Hmm, close! Let's look at it another way. 🔎",
+    "I see where you're going! Let me guide you. 🧭",
+    "Good thinking! Here's another clue. 💡",
+    "You're on the right track! Let's adjust. 🛤️",
+    "No worries! Let's try a different approach. 🎨",
+    "Great attempt! Here's what to consider. 📚",
+    "Keep going! You're learning so much! 🌈"
+  ],
+  topic_intro: [
+    "Ooh, let's explore {topic}! 🚀",
+    "I love talking about {topic}! 🌟",
+    "{topic} is so cool! Ready to learn? 🎨",
+    "Let's dive into {topic} together! 🏊",
+    "Get ready for an adventure with {topic}! 🗺️",
+    "{topic}? That's one of my favorites! 💙",
+    "How exciting! {topic} is amazing! 🎪",
+    "Perfect choice! {topic} is fascinating! 🔬",
+    "Awesome! I can't wait to teach you about {topic}! 🎓",
+    "Yes! {topic} is super interesting! 🌈",
+    "{topic}! Now we're talking! Let's go! 🎯",
+    "Great pick! {topic} is going to be fun! 🎉",
+    "Fantastic! {topic} has so much to discover! 🔍"
+  ],
+  follow_up: [
+    "What would you like to know next?",
+    "Want to try a challenge about this?",
+    "Should we explore more, or try something new?",
+    "Ready for the next step?",
+    "What part interests you most?",
+    "Shall we go deeper into this?",
+    "Curious about anything else?",
+    "Want to practice what you learned?",
+    "Ready to level up?",
+    "Should we try something harder?",
+    "What else can I help you discover?",
+    "Want to see how this connects to other topics?",
+    "Ready for another adventure?"
+  ]
+};
+
+// Get random variation from category
+function getVariation(category: keyof typeof RESPONSE_VARIATIONS, context?: Record<string, string>): string {
+  const variations = RESPONSE_VARIATIONS[category];
+  let chosen = variations[Math.floor(Math.random() * variations.length)];
+
+  // Replace placeholders if context provided
+  if (context) {
+    Object.entries(context).forEach(([key, value]) => {
+      chosen = chosen.replace(`{${key}}`, value);
+    });
+  }
+
+  return chosen;
+}
+
+// Conversation context for dynamic responses
+interface ConversationContext {
+  recentTopics: string[];
+  correctAnswers: number;
+  wrongAnswers: number;
+  questionsAsked: number;
+  lastEmotion: string;
+  conversationLength: number;
+}
+
+function analyzeConversationContext(conversation: (UserMessage | AssistantMessage)[]): ConversationContext {
+  const recentTopics: string[] = [];
+  let correctAnswers = 0;
+  let wrongAnswers = 0;
+  let questionsAsked = 0;
+
+  // Analyze last 5 messages for context
+  const recent = conversation.slice(-5);
+  recent.forEach(msg => {
+    if (msg.role === 'assistant') {
+      if (msg.content.includes('✅') || msg.content.includes('Correct') || msg.content.includes('got it')) {
+        correctAnswers++;
+      }
+      if (msg.content.includes('try again') || msg.content.includes('not quite')) {
+        wrongAnswers++;
+      }
+    }
+    if (msg.role === 'user' && msg.content.includes('?')) {
+      questionsAsked++;
+    }
+  });
+
+  return {
+    recentTopics,
+    correctAnswers,
+    wrongAnswers,
+    questionsAsked,
+    lastEmotion: 'neutral',
+    conversationLength: conversation.length
+  };
+}
+
 // Teaching strategies
 interface TeachingStrategy {
   name: string;
@@ -166,23 +305,97 @@ export async function generateSunnyResponse(
 ): Promise<ReadableStream<any>> {
   const { name, emotion, learningStyle, difficulty } = studentProfile;
 
-  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your goal is to make learning fun, engaging, and accessible. You are talking to ${name}, who is feeling ${emotion} today.
+  // Analyze conversation for context-aware responses
+  const context = analyzeConversationContext(conversation);
 
-Your teaching approach must be adaptive and nurturing. Follow these principles:
-1.  **Adopt a Persona**: Be a friendly, patient, and curious robot friend. Use simple language, short sentences, and plenty of emojis. ✨
-2.  **Be Encouraging**: Always be positive. Praise effort, not just correct answers. Say things like "Great question!" or "That's a super smart idea!".
-3.  **Personalize Learning**: Adapt to the student's learning style, which is currently '${learningStyle}'. For example, for a 'visual' learner, use descriptive words and ask them to imagine things. For a 'kinesthetic' learner, suggest drawing or building.
-4.  **Adjust Difficulty**: The student's preferred difficulty is '${difficulty}'. Tailor your explanations and challenges accordingly.
-5.  **Keep it Interactive**: Ask lots of questions to keep the student engaged. Don't just lecture.
-6.  **Use Mini-Challenges**: When a concept is grasped, offer a fun, simple challenge to reinforce it. Frame it as a game.
+  // Determine response personality based on context
+  let personalityMood = 'balanced';
+  let responseLength = 'medium'; // short, medium, detailed
+  let temperatureSetting = 0.8;
 
-Keep your responses concise and focused. Aim for just 2-3 sentences per message.`;
+  // Adapt to student's emotional state and performance
+  if (emotion === 'excited' || emotion === 'happy') {
+    personalityMood = 'enthusiastic';
+    temperatureSetting = 0.9;
+  } else if (emotion === 'frustrated' || emotion === 'sad') {
+    personalityMood = 'supportive';
+    responseLength = 'detailed';
+    temperatureSetting = 0.7;
+  } else if (emotion === 'confused') {
+    personalityMood = 'patient';
+    responseLength = 'detailed';
+  }
+
+  // Adapt based on performance
+  if (context.wrongAnswers > context.correctAnswers && context.wrongAnswers > 1) {
+    personalityMood = 'encouraging';
+    responseLength = 'detailed';
+  } else if (context.correctAnswers > 2 && context.wrongAnswers === 0) {
+    personalityMood = 'celebratory';
+    temperatureSetting = 0.9;
+  }
+
+  // Dynamic response length guidance
+  const lengthGuidance = {
+    short: '2-3 sentences',
+    medium: '3-5 sentences',
+    detailed: '4-6 sentences with examples'
+  };
+
+  // Get conversation history summary for context
+  const recentHistory = conversation.slice(-3).map(msg =>
+    `${msg.role === 'user' ? 'Student' : 'Sunny'}: ${msg.content.substring(0, 100)}`
+  ).join('\n');
+
+  const systemMessageContent = `You are Sunny, a cheerful and adaptive AI tutor for kids aged 6-10. You're talking to ${name}, who is feeling ${emotion} today.
+
+CURRENT CONTEXT:
+- Mood: ${personalityMood}
+- Recent correct answers: ${context.correctAnswers}
+- Recent struggles: ${context.wrongAnswers}
+- Questions asked: ${context.questionsAsked}
+- Conversation depth: ${context.conversationLength} exchanges
+
+Recent conversation:
+${recentHistory}
+
+PERSONALITY GUIDELINES:
+${personalityMood === 'enthusiastic' ? '- Match their energy! Be extra excited and use more emojis! 🎉🚀✨' : ''}
+${personalityMood === 'supportive' ? '- Be gentle and patient. Focus on encouragement, not pressure. 💙🤗' : ''}
+${personalityMood === 'patient' ? '- Break things down simply. Use analogies and examples. Take your time. 🌟' : ''}
+${personalityMood === 'encouraging' ? '- Celebrate effort over results. Remind them mistakes are learning! 💪🌱' : ''}
+${personalityMood === 'celebratory' ? '- They\'re crushing it! Acknowledge their success and challenge them further! 🏆🔥' : ''}
+
+TEACHING APPROACH:
+1. **Vary Your Language**: Don't use the same phrases repeatedly. Mix up your encouragement!
+2. **Learning Style (${learningStyle})**: ${
+   learningStyle === 'visual' ? 'Use vivid descriptions, colors, imagery, and "picture this" moments' :
+   learningStyle === 'auditory' ? 'Use sound words, rhythm, and "imagine hearing" prompts' :
+   learningStyle === 'kinesthetic' ? 'Suggest physical actions, building, drawing, or moving' :
+   learningStyle === 'reading' ? 'Use clear explanations with bullet points and lists' :
+   'Use logic puzzles, patterns, and "figure out why" challenges'
+}
+3. **Difficulty (${difficulty})**: ${
+   difficulty === 'easy' || difficulty === 'beginner' ? 'Keep it simple and foundational' :
+   difficulty === 'medium' || difficulty === 'intermediate' ? 'Add some complexity and connections' :
+   'Challenge them with deeper questions and advanced concepts'
+}
+4. **Response Length**: Aim for ${lengthGuidance[responseLength as keyof typeof lengthGuidance]}
+5. **Interactive Elements**: ${context.questionsAsked > 2 ? 'They\'re curious! Provide thorough answers.' : 'Ask engaging questions to spark curiosity.'}
+
+PERSONALITY NOTES:
+- Use varied emojis (not just ✨ every time!)
+- Change up your greetings and transitions
+- Avoid repeating "That's super duper!" or similar catchphrases
+- Be natural and conversational, like a real friend
+
+Remember: You're not just a tutor, you're a learning companion! 🌈`;
 
   const messagesForApi = [
     { role: 'system' as const, content: systemMessageContent },
-    ...conversation.map(msg => ({ 
-      role: msg.role, 
-      content: msg.content as string // Assuming content is always string for now
+    ...conversation.map(msg => ({
+      role: msg.role,
+      content: msg.content as string
     }))
   ];
 
@@ -191,8 +404,9 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
     const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: messagesForApi,
-      temperature: 0.7,
-      max_tokens: 200,
+      temperature: temperatureSetting,
+      max_tokens: 350, // Increased from 200 for more nuanced responses
+      top_p: 0.95, // Add top_p for more diversity
       stream: true,
     });
 
@@ -200,10 +414,19 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
 
   } catch (error) {
     console.error('Error streaming response from OpenAI:', error);
-    // Create a new stream with a friendly error message
-    const fallbackMessage = isDemoMode()
-      ? "Hi! I'm running in demo mode right now. I can still chat with you using pre-made responses! 😊"
-      : 'Oops! I had trouble connecting. Let me try to help you another way! 🌟';
+
+    // Use varied fallback messages
+    const fallbackMessages = isDemoMode() ? [
+      "Hi! I'm in demo mode, but I can still help you learn! 😊 What's on your mind?",
+      "Demo mode activated! I'm still here to explore ideas with you! 🌟 What should we talk about?",
+      "Running in demo mode! Let's chat and learn together anyway! 🚀"
+    ] : [
+      "Oops! Had a connection hiccup. But I'm still here! 🌟 What would you like to learn?",
+      "Hmm, technical trouble! Let me help you a different way! 💡 What's your question?",
+      "Connection glitch! No worries, I can still assist! 🤖 Tell me what you're curious about!"
+    ];
+
+    const fallbackMessage = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
 
     return new ReadableStream({
       start(controller) {
@@ -336,6 +559,11 @@ export async function generateFeedback(
 ): Promise<string> {
   const { name, emotion, learningStyle, difficulty } = studentProfile;
 
+  // Get varied feedback opening
+  const openingPhrase = isCorrect ?
+    getVariation('correct_answer') :
+    getVariation('wrong_answer');
+
   const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. You are giving feedback to ${name} who just answered a challenge.
   The child's preferred learning style is '${learningStyle}' and difficulty is '${difficulty}'.
   The challenge was: "${challenge.question}"
@@ -344,32 +572,37 @@ export async function generateFeedback(
   The child's answer was ${isCorrect ? 'CORRECT' : 'INCORRECT'}.
 
   Your feedback should be:
-  1.  **Positive and Encouraging**: Always praise effort.
+  1.  **Positive and Encouraging**: Always praise effort, but VARY your language! Don't use the same phrases.
   2.  **Clear and Simple**: Use language a 6-10 year old can understand.
   3.  **Explain Why**: Briefly explain why the answer was correct or incorrect.
-  4.  **Suggest Next Steps**: If incorrect, gently guide them. If correct, encourage them to try another challenge or explore more.
-  5.  **Concise**: Keep it to 2-3 sentences.
-  6.  **Use Emojis**: Add some fun emojis! ✨😊🚀
+  4.  **Suggest Next Steps**: If incorrect, gently guide them. If correct, use this variation: "${getVariation('follow_up')}"
+  5.  **Length**: Keep it to 3-4 sentences for good explanation.
+  6.  **Use Varied Emojis**: Mix it up! Use different emojis each time (🎯💫🌟✨🎨🚀💡🌈🔥⭐💙🎊)
 
-  Example for a correct answer: "That's super duper! 🎉 You got it right! The answer was indeed ${challenge.correctAnswer}. You're doing great! Want to try another challenge?"
-  Example for an incorrect answer: "Oopsie! Almost there! 🤔 The correct answer was ${challenge.correctAnswer}. Remember, ${challenge.explanation}. Don't worry, learning is all about trying! Let's try another one or learn more about this topic!"
-  `;
+  Start your response with this phrase: "${openingPhrase}"
+  Then add your explanation.
+
+  IMPORTANT: Don't repeat "That's super duper!" or other overused phrases. Be creative and natural!`;
 
   try {
     const client = getOpenAIClient();
     const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [{ role: 'system', content: systemMessageContent }],
-      temperature: 0.7,
-      max_tokens: 150,
+      temperature: 0.85, // Higher temperature for more variety
+      max_tokens: 200, // Increased from 150
     });
 
-    return response.choices[0].message?.content || 'Great effort! Keep learning! 🌟';
+    return response.choices[0].message?.content || `${openingPhrase} ${challenge.explanation}`;
   } catch (error) {
     console.error('Error generating feedback from OpenAI:', error);
-    return isCorrect
-      ? '🎉 Excellent work! You got it right! Keep up the great learning!'
-      : '💪 Good try! Learning takes practice. Let\'s try another one!';
+
+    // Varied fallback responses
+    if (isCorrect) {
+      return `${openingPhrase} ${challenge.explanation} ${getVariation('encouragement')}`;
+    } else {
+      return `${openingPhrase} The correct answer is "${challenge.correctAnswer}". ${challenge.explanation} ${getVariation('encouragement')}`;
+    }
   }
 }
 
@@ -419,17 +652,39 @@ async function generateTraditionalResponse(
 ): Promise<string> {
   const { name, emotion, learningStyle, difficulty } = studentProfile;
 
-  const systemMessageContent = `You are Sunny, a cheerful and encouraging AI tutor for kids aged 6-10. Your goal is to make learning fun, engaging, and accessible. You are talking to ${name}, who is feeling ${emotion} today.
+  // Determine personality based on emotion
+  let personalityNote = '';
+  let tempSetting = 0.8;
 
-Your teaching approach must be adaptive and nurturing. Follow these principles:
-1. Be a friendly, patient, and curious robot friend. Use simple language, short sentences, and plenty of emojis. ✨
-2. Always be positive. Praise effort, not just correct answers.
-3. Adapt to the student's learning style: ${learningStyle}
-4. Adjust difficulty to: ${difficulty}
-5. Keep it interactive with questions
-6. Offer mini-challenges when appropriate
+  if (emotion === 'excited' || emotion === 'happy') {
+    personalityNote = 'Match their energy! Be enthusiastic! 🚀';
+    tempSetting = 0.9;
+  } else if (emotion === 'frustrated' || emotion === 'sad') {
+    personalityNote = 'Be extra supportive and gentle. 💙';
+    tempSetting = 0.7;
+  } else if (emotion === 'confused') {
+    personalityNote = 'Be patient and clear. Break things down. 🌟';
+  }
 
-Keep your responses concise and focused. Aim for just 2-3 sentences per message.`;
+  const systemMessageContent = `You are Sunny, a cheerful and adaptive AI tutor for kids aged 6-10. You're talking to ${name}, who is feeling ${emotion} today.
+
+${personalityNote}
+
+Teaching approach:
+1. **Vary Your Language**: Don't repeat the same phrases! Be creative and natural.
+2. **Learning Style (${learningStyle})**: ${
+   learningStyle === 'visual' ? 'Use vivid imagery and descriptions' :
+   learningStyle === 'auditory' ? 'Use sound words and rhythm' :
+   learningStyle === 'kinesthetic' ? 'Suggest hands-on activities' :
+   learningStyle === 'reading' ? 'Provide clear written explanations' :
+   'Use logic and patterns'
+}
+3. **Difficulty (${difficulty})**: ${difficulty === 'easy' || difficulty === 'beginner' ? 'Keep it simple' : difficulty === 'hard' || difficulty === 'advanced' ? 'Add challenge' : 'Balance between simple and complex'}
+4. **Be Interactive**: Ask engaging questions
+5. **Response Length**: 3-5 sentences
+6. **Varied Emojis**: Mix up your emojis! Use different ones each time.
+
+Remember: Be a learning companion, not a repetitive robot! 🌈`;
 
   try {
     const client = getOpenAIClient();
@@ -439,14 +694,24 @@ Keep your responses concise and focused. Aim for just 2-3 sentences per message.
         { role: 'system', content: systemMessageContent },
         { role: 'user', content: message }
       ],
-      temperature: 0.7,
-      max_tokens: 200,
+      temperature: tempSetting,
+      max_tokens: 350, // Increased from 200
+      top_p: 0.95,
     });
 
-    return response.choices[0].message?.content || "Hi there! I'm here to help you learn! What would you like to explore today? ✨";
+    return response.choices[0].message?.content || `${getVariation('topic_intro', { topic: 'learning' })} What's on your mind?`;
   } catch (error) {
     console.error('Error in traditional response generation:', error);
-    return "Hi there! I'm Sunny, and I'm excited to learn with you! What would you like to talk about? 🌟";
+
+    // Varied fallback
+    const fallbacks = [
+      "Hi there! I'm Sunny, and I'm excited to learn with you! What would you like to talk about? 🌟",
+      "Hey! Ready to explore something cool today? I'm all ears! 🎨",
+      "Hello! I'm here to help you discover amazing things! What interests you? 🚀",
+      "Hi! Let's make learning fun together! What's on your mind? 💡"
+    ];
+
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
 }
 

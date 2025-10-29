@@ -73,23 +73,48 @@ function generateDaily(seed: string): DailyMissionMeta[] {
 
 export async function markMissionComplete(id: string, userId?: string) {
   const seed = getDailySeed()
+  let xpReward = 0;
+
   if (userId) {
     try {
       const { getProgressKey, setProgressKey } = await import('@/lib/persistence')
       const current = await getProgressKey<any>(userId, 'daily_missions')
       if (current && current.seed === seed) {
+        const mission = (current.items as DailyMissionMeta[]).find(m => m.id === id);
+        if (mission && !mission.completed) {
+          xpReward = mission.xpReward;
+        }
         const updated = (current.items as DailyMissionMeta[]).map((m) => (m.id === id ? { ...m, completed: true } : m))
         await setProgressKey(userId, 'daily_missions', { seed, items: updated })
+
+        // Auto-award XP via custom event
+        if (xpReward > 0 && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sunny:xp', {
+            detail: { amount: xpReward, reason: `Completed ${mission?.category} Mission` }
+          }));
+        }
         return
       }
     } catch {}
   }
+
   const storageKey = `sunny_daily_missions_${seed}`
   const stored = localStorage.getItem(storageKey)
   if (!stored) return
   const missions: DailyMissionMeta[] = JSON.parse(stored)
+  const mission = missions.find(m => m.id === id);
+  if (mission && !mission.completed) {
+    xpReward = mission.xpReward;
+  }
   const updated = missions.map(m => (m.id === id ? { ...m, completed: true } : m))
   localStorage.setItem(storageKey, JSON.stringify(updated))
+
+  // Auto-award XP via custom event
+  if (xpReward > 0 && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('sunny:xp', {
+      detail: { amount: xpReward, reason: `Completed ${mission?.category} Mission` }
+    }));
+  }
 }
 
 export interface WeeklyChallengeMeta {

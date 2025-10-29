@@ -358,6 +358,17 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
 
     updateProgress(questionId, isCorrect);
 
+    // Auto-award XP for quiz answers
+    if (typeof window !== 'undefined') {
+      const xpAmount = isCorrect ? 10 : 5; // 10 XP for correct, 5 XP for participation
+      window.dispatchEvent(new CustomEvent('sunny:xp', {
+        detail: {
+          amount: xpAmount,
+          reason: isCorrect ? 'Correct answer!' : 'Nice try!'
+        }
+      }));
+    }
+
     const feedbackMessageContent = await generateFeedback(challenge, userAnswer, isCorrect, studentProfile);
 
     const feedbackContent: FeedbackContent = {
