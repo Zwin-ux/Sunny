@@ -1,11 +1,21 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { SunnyVoice } from '@/components/voice/SunnyVoice';
-import { Answer } from '@/types/demo';
+import { ProgressBar } from '@/components/demo/ProgressBar';
+import { BadgeDisplay } from '@/components/demo/BadgeDisplay';
+import { WorldUnlock } from '@/components/demo/WorldUnlock';
+import { Answer, Badge } from '@/types/demo';
 import { analyzePerformance, generateAnalysisMessage } from '@/lib/demo-insights';
+import { 
+  initializeGameProgress, 
+  updateGameProgress, 
+  calculateLevel,
+  ALL_WORLDS 
+} from '@/lib/demo-gamification';
 
 interface DemoResultsProps {
   answers: Answer[];
@@ -20,6 +30,34 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
   const score = answers.filter(a => a.correct).length;
   const total = answers.length;
   const percentage = Math.round((score / total) * 100);
+  
+  // Gamification state
+  const [gameProgress, setGameProgress] = useState(initializeGameProgress());
+  const [newlyEarnedBadges, setNewlyEarnedBadges] = useState<Badge[]>([]);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  
+  useEffect(() => {
+    // Calculate progress
+    const oldLevel = gameProgress.level;
+    const updatedProgress = updateGameProgress(gameProgress, answers);
+    setGameProgress(updatedProgress);
+    
+    // Check for newly earned badges
+    const newBadges = updatedProgress.badges.filter(b => 
+      b.earned && !gameProgress.badges.find(gb => gb.id === b.id)?.earned
+    );
+    if (newBadges.length > 0) {
+      setNewlyEarnedBadges(newBadges);
+      // Clear after 3 seconds
+      setTimeout(() => setNewlyEarnedBadges([]), 3000);
+    }
+    
+    // Check for level up
+    if (updatedProgress.level > oldLevel) {
+      setShowLevelUp(true);
+      setTimeout(() => setShowLevelUp(false), 3000);
+    }
+  }, [answers]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-yellow-50 to-white">
@@ -78,6 +116,32 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
             )}
           </div>
         </Card>
+
+        {/* Gamification Progress */}
+        <div className="mb-6">
+          <ProgressBar
+            xp={gameProgress.xp}
+            level={gameProgress.level}
+            nextLevelXP={gameProgress.level * 100}
+            showLevelUp={showLevelUp}
+          />
+        </div>
+
+        {/* Badges */}
+        <div className="mb-6">
+          <BadgeDisplay
+            badges={gameProgress.badges}
+            newlyEarned={newlyEarnedBadges}
+          />
+        </div>
+
+        {/* Worlds */}
+        <div className="mb-6">
+          <WorldUnlock
+            worlds={ALL_WORLDS}
+            currentXP={gameProgress.xp}
+          />
+        </div>
 
         {/* Sunny's Analysis */}
         <Card className="p-6 mb-6 bg-yellow-50 border-2 border-yellow-200">

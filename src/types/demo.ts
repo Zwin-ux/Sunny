@@ -59,3 +59,43 @@ export interface DemoResults {
   insights: DemoInsights;
   answers: Answer[];
 }
+
+// Gamification types
+export type BadgeType = 
+  | 'first_correct'
+  | 'streak_3'
+  | 'streak_5'
+  | 'perfect_mission'
+  | 'speed_demon'
+  | 'persistent'
+  | 'math_master'
+  | 'world_explorer';
+
+export type WorldType = 'math_galaxy' | 'robot_city' | 'space_quest' | 'ocean_deep';
+
+export interface Badge {
+  id: BadgeType;
+  name: string;
+  description: string;
+  icon: string;
+  earned: boolean;
+  earnedAt?: number;
+}
+
+export interface World {
+  id: WorldType;
+  name: string;
+  description: string;
+  icon: string;
+  requiredXP: number;
+  unlocked: boolean;
+  color: string;
+}
+
+export interface GameProgress {
+  xp: number;
+  level: number;
+  badges: Badge[];
+  unlockedWorlds: WorldType[];
+  currentWorld: WorldType;
+}
