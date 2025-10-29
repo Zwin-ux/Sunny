@@ -196,14 +196,27 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
         </Card>
 
         {/* CTA */}
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <Button
-            onClick={onContinue}
+            onClick={() => window.location.href = '/dashboard'}
             size="lg"
-            className="bg-yellow-500 hover:bg-yellow-600 text-black text-lg px-8 py-6 font-semibold shadow-lg"
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-lg px-8 py-6 font-semibold shadow-lg"
           >
-            Want More? Join the Waitlist! →
+            Go to Your Dashboard →
           </Button>
+          <div>
+            <Button
+              onClick={onContinue}
+              variant="outline"
+              size="lg"
+              className="text-lg px-8 py-6"
+            >
+              Join Waitlist
+            </Button>
+          </div>
+          <p className="text-sm text-gray-600">
+            Experience the full Learning OS in your dashboard
+          </p>
         </div>
       </div>
     </div>
