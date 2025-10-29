@@ -184,9 +184,14 @@ export default function DashboardPage() {
           <LearningAppsLauncher
             currentXP={missionsCompleted * 50}
             onAppClick={(appId) => {
-              if (appId === 'math-lab') window.location.href = '/math-lab';
-              else if (appId === 'demo') window.location.href = '/demo';
-              else console.log('App clicked:', appId);
+              // Implemented apps
+              if (appId === 'math-lab') {
+                window.location.href = '/math-lab';
+              } 
+              // Apps in development
+              else {
+                alert(`🚧 ${appId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} is coming soon! We're working hard to bring you this learning experience. 🎉`);
+              }
             }}
           />
         </motion.div>
