@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SunnyVoice } from '@/components/voice/SunnyVoice';
 import { LearningFeedback } from '@/components/demo/LearningFeedback';
+import { EmotionMeter } from '@/components/demo/EmotionMeter';
 import { getRandomQuestion, getNextDifficulty } from '@/lib/demo-questions';
 import { 
   trackTopicPreferences, 
@@ -151,6 +152,17 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
 
         {/* Progress Bar */}
         <Progress value={progress} className="mb-6" />
+        
+        {/* Emotion Meter - Show after 1 question */}
+        {answers.length >= 1 && (
+          <div className="mb-6">
+            <EmotionMeter
+              emotion={emotionalState}
+              autoDetected={true}
+              showMessage={true}
+            />
+          </div>
+        )}
         
         {/* Learning Feedback - Show after 2 questions */}
         {answers.length >= 2 && (
