@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { BookOpen, Sparkles, RefreshCw, Download, Share2 } from 'lucide-react';
@@ -22,7 +22,7 @@ interface StoryParams {
   length: 'short' | 'medium' | 'long';
 }
 
-export default function StoriesPage() {
+function StoriesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
@@ -368,5 +368,13 @@ The End! 🌟`;
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function StoriesPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <StoriesPageContent />
+    </Suspense>
   );
 }
