@@ -466,7 +466,7 @@ function ChatPageContent() {
                 <Quiz
                   question={challenge}
                   onAnswer={(isCorrect, qid, q, userAnswer) => {
-                    const msg = isCorrect ? 'Great job! ✅' : 'Good try! Let\\'s review.'
+                    const msg = isCorrect ? 'Great job! ✅' : "Good try! Let's review."
                     const text = `${msg} ${q.explanation}`
                     setMessages(prev => [...prev, { id: `fb-${Date.now()}`, role: 'assistant', content: text, timestamp: new Date() }])
                     saveChatMessage('assistant', text, 'feedback', { quiz: { id: qid, topic: q.question, answer: userAnswer, correct: isCorrect } })

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useLearningSession } from '../contexts/LearningSessionContext';
 import { Message, UserMessage, AssistantMessage, ChallengeMessage, FeedbackMessage, FeedbackContent, Challenge, StudentProfile } from '../types/chat';
 import { Lesson, LessonContent, MediaContent, QuizQuestion, ContentType } from '../types/lesson';
@@ -14,6 +14,16 @@ import { validateAIResponse, addEmojisIfNeeded } from '../lib/safety/output-vali
 import { interpretIntent, interpretCombined, type RoutingDecision } from '../lib/response-interpreter';
 // Game system imports
 import type { DifficultyLevel, GameType } from '../types/game';
+// Learning Intelligence imports
+import {
+  analyzeMessage,
+  analyzeConversation,
+  calculateAdaptiveXP,
+  shouldSuggestBreak,
+  generateEncouragement,
+  type ConversationContext,
+  type MessageAnalysis
+} from '../lib/learning-intelligence';
 
 export const useLearningChat = (onNewMessage: (message: Message) => void, studentProfile: StudentProfile) => {
   const {
@@ -46,6 +56,17 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     duration?: number;
   } | null>(null);
 
+  // 🧠 Learning Intelligence: Track conversation context
+  const conversationContextRef = useRef<ConversationContext>({
+    recentMessages: [],
+    topicsDiscussed: new Map(),
+    questionsAsked: 0,
+    correctAnswers: 0,
+    incorrectAnswers: 0,
+    sessionDuration: 0,
+  });
+  const sessionStartTimeRef = useRef<number>(Date.now());
+
   // Sync with learning session context
   useEffect(() => {
     if (currentLesson) {
@@ -58,6 +79,23 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
       setCurrentLessonState(null);
     }
   }, [currentLesson, currentContentIndex]);
+
+  // 🧠 Update session duration every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const durationMinutes = Math.floor((Date.now() - sessionStartTimeRef.current) / 60000);
+      conversationContextRef.current.sessionDuration = durationMinutes;
+
+      // Check if student needs a break
+      if (shouldSuggestBreak(conversationContextRef.current)) {
+        onNewMessage(createAssistantTextMessage(
+          "You've been learning for a while! 🌟 How about taking a quick break? A little rest helps your brain process everything you've learned! 🧠✨"
+        ));
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [onNewMessage]);
 
   const createAssistantTextMessage = (text: string): AssistantMessage => ({
     id: uuidv4(),
@@ -174,6 +212,27 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
     };
     onNewMessage(userMessage);
 
+    // 🧠 Track message in conversation context
+    conversationContextRef.current.recentMessages.push({
+      role: 'user',
+      content: safeMessage,
+      timestamp: new Date(),
+    });
+    // Keep only last 20 messages
+    if (conversationContextRef.current.recentMessages.length > 20) {
+      conversationContextRef.current.recentMessages = conversationContextRef.current.recentMessages.slice(-20);
+    }
+
+    // 🧠 Analyze the message for intelligence
+    const messageAnalysis = analyzeMessage(safeMessage, conversationContextRef.current);
+    console.log('🧠 Message Analysis:', messageAnalysis);
+
+    // Track topics
+    if (messageAnalysis.topic) {
+      const currentCount = conversationContextRef.current.topicsDiscussed.get(messageAnalysis.topic) || 0;
+      conversationContextRef.current.topicsDiscussed.set(messageAnalysis.topic, currentCount + 1);
+    }
+
     setIsProcessing(true);
 
     try {
@@ -236,6 +295,48 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
         };
 
         onNewMessage(aiResponse);
+
+        // 🧠 Award adaptive XP based on message quality
+        const adaptiveXP = calculateAdaptiveXP(5, messageAnalysis, conversationContextRef.current);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sunny:xp', {
+            detail: {
+              amount: adaptiveXP.xp,
+              reason: adaptiveXP.reason
+            }
+          }));
+        }
+
+        // 🧠 Handle smart learning actions from analysis
+        for (const action of messageAnalysis.suggestedActions) {
+          if (action.type === 'focus_session' && action.priority === 'high') {
+            console.log('🎯 Auto-suggesting focus session:', action.reason);
+            setTimeout(() => {
+              onNewMessage(createAssistantTextMessage(
+                `I noticed you might be finding ${action.data?.topic} a bit challenging. 🎯 How about we do a quick 20-minute focus session? It'll help you master this topic with fun practice! Want to try it?`
+              ));
+              if (action.data?.topic) {
+                setPendingFocusRequest({
+                  topic: action.data.topic,
+                  duration: action.data.suggestedDuration || 1200,
+                });
+              }
+            }, 1500);
+          } else if (action.type === 'encouragement' && action.priority === 'high') {
+            console.log('💪 Providing extra encouragement:', action.reason);
+            setTimeout(() => {
+              const encouragementMsg = generateEncouragement(conversationContextRef.current);
+              onNewMessage(createAssistantTextMessage(encouragementMsg));
+            }, 2000);
+          } else if (action.type === 'game_suggestion' && action.priority === 'medium') {
+            console.log('🎮 Suggesting game to boost engagement:', action.reason);
+            setTimeout(() => {
+              onNewMessage(createAssistantTextMessage(
+                `Hey, let's make this more fun! 🎮 Would you like to play a ${action.data?.topic} game? It's a great way to learn while having a blast!`
+              ));
+            }, 1500);
+          }
+        }
 
         // 🚀 LEARNING OS: Check if intent should trigger app launch
         console.log('🎯 Checking for app routing...');
@@ -358,13 +459,47 @@ export const useLearningChat = (onNewMessage: (message: Message) => void, studen
 
     updateProgress(questionId, isCorrect);
 
+    // 🧠 Track quiz performance in conversation context
+    conversationContextRef.current.questionsAsked++;
+    if (isCorrect) {
+      conversationContextRef.current.correctAnswers++;
+    } else {
+      conversationContextRef.current.incorrectAnswers++;
+    }
+
+    // 🧠 Smart XP award based on performance patterns
+    const baseXP = isCorrect ? 10 : 5;
+    const successRate = conversationContextRef.current.questionsAsked > 0
+      ? conversationContextRef.current.correctAnswers / conversationContextRef.current.questionsAsked
+      : 0;
+
+    let bonusMultiplier = 1.0;
+    let bonusReason = '';
+
+    // Streak bonus
+    if (isCorrect && conversationContextRef.current.incorrectAnswers === 0 && conversationContextRef.current.correctAnswers >= 3) {
+      bonusMultiplier = 1.5;
+      bonusReason = ' (Perfect streak!)';
+    }
+    // Comeback bonus (correct after struggles)
+    else if (isCorrect && successRate < 0.6 && conversationContextRef.current.questionsAsked >= 3) {
+      bonusMultiplier = 1.3;
+      bonusReason = ' (Great comeback!)';
+    }
+    // Consistency bonus
+    else if (isCorrect && successRate >= 0.8 && conversationContextRef.current.questionsAsked >= 5) {
+      bonusMultiplier = 1.2;
+      bonusReason = ' (Consistent performance!)';
+    }
+
+    const finalXP = Math.round(baseXP * bonusMultiplier);
+
     // Auto-award XP for quiz answers
     if (typeof window !== 'undefined') {
-      const xpAmount = isCorrect ? 10 : 5; // 10 XP for correct, 5 XP for participation
       window.dispatchEvent(new CustomEvent('sunny:xp', {
         detail: {
-          amount: xpAmount,
-          reason: isCorrect ? 'Correct answer!' : 'Nice try!'
+          amount: finalXP,
+          reason: (isCorrect ? 'Correct answer!' : 'Nice try!') + bonusReason
         }
       }));
     }
