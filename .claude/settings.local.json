@@ -19,7 +19,9 @@
       "Bash(NODE_OPTIONS=\"--trace-warnings\" npm run build:*)",
       "Bash(npx next build:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nComplete Supabase integration - Sunny Learning OS ready for deployment\n\nDatabase Schema & Types:\n- Added 5 Learning OS tables: skills, sessions, question_attempts, notes, parent_student_links\n- Updated users table with 8 new columns (role, grade_level, streaks, etc.)\n- Full TypeScript type safety with Database generic type\n\nUI Components:\n- Created Progress component for focus sessions\n- Enhanced Badge component with variant support (default, secondary, outline, destructive)\n\nAPI Routes:\n- Integrated typed Supabase client in dashboard, mission/grade, mission/next routes\n- Full database persistence for Learning Brain intelligence system\n\nBuild Configuration:\n- Updated vercel-build script to prioritize deployment\n- All 17 routes building successfully\n- Production-ready for Vercel deployment\n\nFeatures Now Live:\n✅ Learning OS with adaptive missions\n✅ Real-time skill mastery tracking\n✅ AI-powered grading and feedback\n✅ Student dashboard with streak tracking\n✅ Supabase backend with RLS policies\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cat:*)",
+      "Bash(vercel whoami:*)"
     ],
     "deny": [],
     "ask": []
