@@ -31,17 +31,33 @@ interface AppSettings {
   parentPin?: string
 }
 
+interface BrainModeSettings {
+  showThinking: boolean
+  showAdaptation: boolean
+  showPatterns: boolean
+  adaptiveSpeed: 'instant' | 'gradual' | 'conservative'
+  interventionLevel: 'high' | 'medium' | 'low'
+}
+
 export default function SettingsPage() {
   const { level } = useXP()
   const [profile, setProfile] = useState<ProfileSettings>({ name: '', avatar: '', grade: '' })
   const [prefs, setPrefs] = useState<PreferencesSettings>({ difficulty: 'medium', pace: 'normal' })
   const [app, setApp] = useState<AppSettings>({ notifications: true, voiceEnabled: true, voice: 'sunny', theme: 'light', color: 'blue', privacyShare: false })
+  const [brain, setBrain] = useState<BrainModeSettings>({
+    showThinking: true,
+    showAdaptation: true,
+    showPatterns: true,
+    adaptiveSpeed: 'gradual',
+    interventionLevel: 'medium'
+  })
 
   useEffect(() => {
     try {
       const ps = localStorage.getItem('settings_profile'); if (ps) setProfile(JSON.parse(ps))
       const pf = localStorage.getItem('settings_prefs'); if (pf) setPrefs(JSON.parse(pf))
       const as = localStorage.getItem('settings_app'); if (as) setApp(JSON.parse(as))
+      const bs = localStorage.getItem('settings_brain'); if (bs) setBrain(JSON.parse(bs))
     } catch {}
   }, [])
 
@@ -49,13 +65,17 @@ export default function SettingsPage() {
     localStorage.setItem('settings_profile', JSON.stringify(profile))
     localStorage.setItem('settings_prefs', JSON.stringify(prefs))
     localStorage.setItem('settings_app', JSON.stringify(app))
+    localStorage.setItem('settings_brain', JSON.stringify(brain))
     toast.success('Settings saved')
   }
 
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-4xl font-black mb-6">Settings</h1>
+        <div className="mb-8">
+          <h1 className="text-4xl font-black mb-2">Settings</h1>
+          <p className="text-gray-600">Customize your learning experience and see how Sunny adapts to you</p>
+        </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
           <Card className="p-6 border-2 border-black">
@@ -160,6 +180,120 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-600">Current level: {level}. Some features may require a PIN.</p>
             </div>
           </Card>
+        </div>
+
+        {/* Brain Mode & Adaptive Learning Section */}
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold mb-1">🧠 Brain Mode & Adaptive Learning</h2>
+            <p className="text-sm text-gray-600">Control how Sunny's AI adapts to your learning style</p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card className="p-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <span className="text-2xl">👁️</span>
+                Visibility Settings
+              </h2>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={brain.showThinking} 
+                    onChange={e => setBrain({ ...brain, showThinking: e.target.checked })} 
+                    className="w-4 h-4"
+                  />
+                  <div>
+                    <span className="font-semibold">Show Thinking Process</span>
+                    <p className="text-xs text-gray-600">See how Sunny analyzes your answers in real-time</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={brain.showAdaptation} 
+                    onChange={e => setBrain({ ...brain, showAdaptation: e.target.checked })} 
+                    className="w-4 h-4"
+                  />
+                  <div>
+                    <span className="font-semibold">Show Adaptation Alerts</span>
+                    <p className="text-xs text-gray-600">Get notified when difficulty adjusts</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={brain.showPatterns} 
+                    onChange={e => setBrain({ ...brain, showPatterns: e.target.checked })} 
+                    className="w-4 h-4"
+                  />
+                  <div>
+                    <span className="font-semibold">Show Pattern Detection</span>
+                    <p className="text-xs text-gray-600">See what patterns Sunny discovers about you</p>
+                  </div>
+                </label>
+              </div>
+            </Card>
+
+            <Card className="p-6 border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <span className="text-2xl">⚡</span>
+                Adaptation Settings
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-semibold mb-2 block">Adaptive Speed</label>
+                  <select 
+                    className="w-full border-2 border-black rounded-md p-2" 
+                    value={brain.adaptiveSpeed} 
+                    onChange={e => setBrain({ ...brain, adaptiveSpeed: e.target.value as any })}
+                  >
+                    <option value="instant">Instant - Adapt immediately</option>
+                    <option value="gradual">Gradual - Adapt after patterns</option>
+                    <option value="conservative">Conservative - Adapt slowly</option>
+                  </select>
+                  <p className="text-xs text-gray-600 mt-1">How quickly Sunny adjusts difficulty</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold mb-2 block">Intervention Level</label>
+                  <select 
+                    className="w-full border-2 border-black rounded-md p-2" 
+                    value={brain.interventionLevel} 
+                    onChange={e => setBrain({ ...brain, interventionLevel: e.target.value as any })}
+                  >
+                    <option value="high">High - Help often</option>
+                    <option value="medium">Medium - Balanced support</option>
+                    <option value="low">Low - Minimal help</option>
+                  </select>
+                  <p className="text-xs text-gray-600 mt-1">How much Sunny steps in to help</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 border-2 border-green-200 bg-gradient-to-br from-green-50 to-white lg:col-span-2">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <span className="text-2xl">📊</span>
+                Core Learning Functions
+              </h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="text-2xl mb-2">🎯</div>
+                  <h3 className="font-bold mb-1">Real-time Adaptation</h3>
+                  <p className="text-xs text-gray-600">Sunny adjusts difficulty based on your performance, not just scores</p>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="text-2xl mb-2">🔍</div>
+                  <h3 className="font-bold mb-1">Pattern Detection</h3>
+                  <p className="text-xs text-gray-600">Identifies when you're struggling, guessing, or excelling</p>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="text-2xl mb-2">💡</div>
+                  <h3 className="font-bold mb-1">Smart Interventions</h3>
+                  <p className="text-xs text-gray-600">Provides help exactly when needed, not too early or late</p>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end">

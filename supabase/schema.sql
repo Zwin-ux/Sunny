@@ -428,6 +428,163 @@ CREATE TRIGGER update_lesson_plans_updated_at BEFORE UPDATE ON public.lesson_pla
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
+-- QUIZ SYSTEM TABLES
+-- Adaptive learning quiz engine with intelligent question selection
+-- ============================================================================
+
+-- Quiz sessions table
+CREATE TABLE IF NOT EXISTS public.quiz_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES public.users(id),
+  topic TEXT NOT NULL,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE,
+  
+  -- Session data
+  questions JSONB NOT NULL,
+  answers JSONB DEFAULT '[]'::JSONB,
+  
+  -- Metrics
+  total_questions INTEGER NOT NULL,
+  questions_completed INTEGER DEFAULT 0,
+  correct_answers INTEGER DEFAULT 0,
+  total_points INTEGER NOT NULL,
+  earned_points INTEGER DEFAULT 0,
+  
+  -- Adaptive tracking
+  difficulty_adjustments JSONB DEFAULT '[]'::JSONB,
+  concepts_mastered TEXT[] DEFAULT ARRAY[]::TEXT[],
+  concepts_to_review TEXT[] DEFAULT ARRAY[]::TEXT[],
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Student performance state table
+CREATE TABLE IF NOT EXISTS public.student_performance (
+  user_id TEXT REFERENCES public.users(id),
+  topic TEXT NOT NULL,
+  
+  -- Performance metrics
+  mastery_level INTEGER DEFAULT 50,
+  current_difficulty TEXT DEFAULT 'medium',
+  accuracy_rate DECIMAL DEFAULT 0.75,
+  average_time_per_question INTEGER DEFAULT 30000,
+  hints_usage_rate DECIMAL DEFAULT 0.3,
+  
+  -- Streaks
+  current_streak INTEGER DEFAULT 0,
+  longest_streak INTEGER DEFAULT 0,
+  
+  -- Patterns
+  struggling_indicators TEXT[] DEFAULT ARRAY[]::TEXT[],
+  strength_areas TEXT[] DEFAULT ARRAY[]::TEXT[],
+  
+  -- Recent answers (last 10)
+  recent_answers JSONB DEFAULT '[]'::JSONB,
+  
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  PRIMARY KEY (user_id, topic)
+);
+
+-- Question bank table
+CREATE TABLE IF NOT EXISTS public.question_bank (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  subtopic TEXT,
+  
+  -- Content
+  content JSONB NOT NULL,
+  
+  -- Pedagogical metadata
+  blooms_level TEXT NOT NULL,
+  cognitive_load TEXT NOT NULL,
+  difficulty TEXT NOT NULL,
+  
+  -- Scaffolding
+  scaffolding JSONB NOT NULL,
+  
+  -- Metadata
+  prerequisite_knowledge TEXT[] DEFAULT ARRAY[]::TEXT[],
+  tags TEXT[] DEFAULT ARRAY[]::TEXT[],
+  estimated_time INTEGER DEFAULT 30,
+  points INTEGER DEFAULT 10,
+  
+  -- Usage stats
+  times_asked INTEGER DEFAULT 0,
+  average_correct DECIMAL,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for quiz system
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_user ON public.quiz_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_topic ON public.quiz_sessions(topic);
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_completed ON public.quiz_sessions(completed_at);
+CREATE INDEX IF NOT EXISTS idx_student_performance_user ON public.student_performance(user_id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_topic ON public.question_bank(topic);
+CREATE INDEX IF NOT EXISTS idx_question_bank_difficulty ON public.question_bank(difficulty);
+CREATE INDEX IF NOT EXISTS idx_question_bank_blooms ON public.question_bank(blooms_level);
+
+-- GIN indexes for JSONB and array searches
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_questions ON public.quiz_sessions USING GIN(questions);
+CREATE INDEX IF NOT EXISTS idx_question_bank_tags ON public.question_bank USING GIN(tags);
+
+-- Enable RLS on quiz tables
+ALTER TABLE public.quiz_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.student_performance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.question_bank ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for quiz_sessions
+CREATE POLICY quiz_sessions_select_own ON public.quiz_sessions
+  FOR SELECT USING (
+    auth.uid()::text = user_id
+  );
+
+CREATE POLICY quiz_sessions_insert_own ON public.quiz_sessions
+  FOR INSERT WITH CHECK (
+    auth.uid()::text = user_id
+  );
+
+CREATE POLICY quiz_sessions_update_own ON public.quiz_sessions
+  FOR UPDATE USING (
+    auth.uid()::text = user_id
+  );
+
+-- RLS Policies for student_performance
+CREATE POLICY student_performance_select_own ON public.student_performance
+  FOR SELECT USING (
+    auth.uid()::text = user_id
+  );
+
+CREATE POLICY student_performance_insert_own ON public.student_performance
+  FOR INSERT WITH CHECK (
+    auth.uid()::text = user_id
+  );
+
+CREATE POLICY student_performance_update_own ON public.student_performance
+  FOR UPDATE USING (
+    auth.uid()::text = user_id
+  );
+
+-- RLS Policies for question_bank (public read, admin write)
+CREATE POLICY question_bank_select_all ON public.question_bank
+  FOR SELECT USING (true);
+
+-- Triggers for updated_at
+CREATE TRIGGER update_quiz_sessions_updated_at BEFORE UPDATE ON public.quiz_sessions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_student_performance_updated_at BEFORE UPDATE ON public.student_performance
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_question_bank_updated_at BEFORE UPDATE ON public.question_bank
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
 -- INITIAL DATA
 -- ============================================================================
 

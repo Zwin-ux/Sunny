@@ -6,6 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { SunnyVoice } from '@/components/voice/SunnyVoice';
 import { LearningFeedback } from '@/components/demo/LearningFeedback';
 import { EmotionMeter } from '@/components/demo/EmotionMeter';
+import { BrainModeVisualization } from '@/components/demo/BrainModeVisualization';
+import { ProgressiveHints } from '@/components/quiz/ProgressiveHints';
 import { getRandomQuestion, getNextDifficulty } from '@/lib/demo-questions';
 import { 
   trackTopicPreferences, 
@@ -14,6 +16,8 @@ import {
   generateAdaptiveMessage 
 } from '@/lib/demo-insights';
 import { Question, DifficultyLevel, Answer } from '@/types/demo';
+import { useQuiz } from '@/hooks/useQuiz';
+import { Target, Lightbulb, Sparkles } from 'lucide-react';
 
 interface DemoMissionProps {
   initialLevel: DifficultyLevel;
@@ -31,6 +35,7 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
   const [consecutiveWrong, setConsecutiveWrong] = useState(0);
   const [sunnyMessage, setSunnyMessage] = useState('Let\'s do this! 🎯');
   const [startTime, setStartTime] = useState(Date.now());
+  const [showBrainMode, setShowBrainMode] = useState(true);
 
   const totalQuestions = 7;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
@@ -136,7 +141,7 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-yellow-50 to-white">
-      <div className="max-w-4xl w-full">
+      <div className="max-w-6xl w-full">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">☀️</div>
@@ -152,6 +157,73 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
 
         {/* Progress Bar */}
         <Progress value={progress} className="mb-6" />
+        
+        {/* Brain Mode Toggle */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setShowBrainMode(!showBrainMode)}
+            className="text-sm px-4 py-2 rounded-lg border-2 border-purple-300 bg-purple-50 hover:bg-purple-100 transition-colors font-semibold text-purple-700"
+          >
+            {showBrainMode ? '🧠 Hide' : '🧠 Show'} Brain Mode
+          </button>
+        </div>
+        
+        {/* Brain Mode Visualization - Show after 1 question */}
+        {answers.length >= 1 && showBrainMode && (
+          <div className="mb-6">
+            <BrainModeVisualization
+              answers={answers}
+              currentDifficulty={difficulty}
+              streak={streak}
+              consecutiveWrong={consecutiveWrong}
+              showThinking={true}
+            />
+          </div>
+        )}
+        
+        {/* Intelligent Quiz System Callouts - Show after 1 question */}
+        {answers.length >= 1 && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-xl shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-5 h-5" />
+                <div className="text-sm font-semibold">Adaptive</div>
+              </div>
+              <div className="text-xs opacity-90">
+                Difficulty: {difficulty}
+              </div>
+              <div className="text-xs opacity-75 mt-1">
+                {consecutiveWrong >= 1 ? 'Adjusting down...' : streak >= 1 ? 'Leveling up!' : 'Monitoring...'}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-xl shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="w-5 h-5" />
+                <div className="text-sm font-semibold">Smart Hints</div>
+              </div>
+              <div className="text-xs opacity-90">
+                Progressive support
+              </div>
+              <div className="text-xs opacity-75 mt-1">
+                {currentQuestion?.hint ? 'Available below' : 'Ready when needed'}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-xl shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5" />
+                <div className="text-sm font-semibold">AI Analysis</div>
+              </div>
+              <div className="text-xs opacity-90">
+                Real-time tracking
+              </div>
+              <div className="text-xs opacity-75 mt-1">
+                {answers.length} questions analyzed
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Emotion Meter - Show after 1 question */}
         {answers.length >= 1 && (

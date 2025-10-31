@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Brain, Heart, Target, TrendingUp } from 'lucide-react';
+import { Brain, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 interface LearningFeedbackProps {
@@ -51,86 +51,34 @@ export function LearningFeedback({
         </motion.div>
       )}
 
-      {/* Learning Insights Grid */}
-      <div className="grid grid-cols-3 gap-3">
-        {/* Topic Preferences */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Brain className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-semibold text-gray-700">Topics</span>
+      {/* Learning Insights - Topics Only */}
+      <div className="max-w-md mx-auto">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-5 h-5 text-purple-600" />
+            <span className="text-base font-semibold text-gray-700">Topic Performance</span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {topTopics.length > 0 ? (
               topTopics.map(([topic, score]) => (
                 <div key={topic} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">{topic}</span>
-                    <span className="text-gray-500">{Math.round(score)}%</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700 font-medium capitalize">{topic}</span>
+                    <span className="text-gray-600">{Math.round(score)}%</span>
                   </div>
-                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${score}%` }}
                       transition={{ duration: 0.5 }}
-                      className="h-full bg-purple-500"
+                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500"
                     />
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-xs text-gray-500">Learning...</p>
+              <p className="text-sm text-gray-500">Analyzing performance...</p>
             )}
-          </div>
-        </Card>
-
-        {/* Emotional State */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Heart className="w-4 h-4 text-pink-600" />
-            <span className="text-sm font-semibold text-gray-700">Mood</span>
-          </div>
-          <div className="text-center">
-            <div className="text-4xl mb-2">{emotion.emoji}</div>
-            <div className={`text-sm font-semibold ${emotion.color}`}>
-              {emotion.label}
-            </div>
-          </div>
-        </Card>
-
-        {/* Focus Level */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Target className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-semibold text-gray-700">Focus</span>
-          </div>
-          <div className="space-y-2">
-            <div className="relative h-16">
-              <svg className="w-full h-full" viewBox="0 0 100 50">
-                {/* Background arc */}
-                <path
-                  d="M 10 45 A 40 40 0 0 1 90 45"
-                  fill="none"
-                  stroke="#e5e7eb"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                />
-                {/* Progress arc */}
-                <motion.path
-                  d="M 10 45 A 40 40 0 0 1 90 45"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray="126"
-                  initial={{ strokeDashoffset: 126 }}
-                  animate={{ strokeDashoffset: 126 - (126 * focusLevel / 100) }}
-                  transition={{ duration: 0.5 }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-blue-600">{focusLevel}%</span>
-              </div>
-            </div>
           </div>
         </Card>
       </div>
