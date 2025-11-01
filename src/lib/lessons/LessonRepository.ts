@@ -2,6 +2,7 @@ import { Lesson, ContentType } from '../../types/lesson';
 // import beeLesson from './bees';
 import { LessonLoader } from './LessonLoader';
 // import path from 'path';
+import { seedLessons } from '@/data/lessons/seedLessons';
 
 /**
  * LessonRepository is a singleton that manages all lessons
@@ -31,15 +32,11 @@ class LessonRepository {
 
   private initializeLessons(): void {
     try {
-      // Skip initialization during server-side build to avoid errors
-      if (typeof window === 'undefined') {
-        console.log('Skipping lesson initialization during server-side build');
+      if (this.lessons.size > 0) {
         return;
       }
-      // Initialize with default lessons - temporarily disabled
-      // if (beeLesson && typeof beeLesson === 'object') {
-      //   this.addLesson(beeLesson);
-      // }
+
+      seedLessons.forEach(lesson => this.addLesson(lesson));
     } catch (error) {
       console.error('Error initializing lessons:', error);
     }

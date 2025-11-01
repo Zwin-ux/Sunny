@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { v4 as uuidv4 } from 'uuid';
 import {
   SunnyChatMessage,
@@ -13,7 +12,7 @@ import {
   AssistantMessage,
 } from '../types/chat';
 import { globalAgentManager } from './agents';
-import { isDemoMode } from './demo-mode';
+import { isDemoMode } from './runtimeMode';
 
 // Re-export isDemoMode for other modules
 export { isDemoMode };
@@ -23,16 +22,17 @@ let openaiClient: OpenAI | null = null;
 
 export function getOpenAIClient(): OpenAI {
   if (isDemoMode()) {
-    throw new Error('Demo mode active - OpenAI client not available');
+    throw new Error('OpenAI client not available in demo mode');
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY environment variable is not set');
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OpenAI API key not configured');
   }
 
   if (!openaiClient) {
     openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey,
     });
   }
 
@@ -401,6 +401,10 @@ Remember: You're not just a tutor, you're a learning companion! 🌈`;
 
   try {
     const client = getOpenAIClient();
+    if (!client) {
+      throw new Error('OpenAI client unavailable');
+    }
+
     const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: messagesForApi,
@@ -516,6 +520,10 @@ export async function generateMiniChallenge(
 
   try {
     const client = getOpenAIClient();
+    if (!client) {
+      throw new Error('OpenAI client unavailable');
+    }
+
     const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [{ role: 'system', content: systemMessageContent }],
@@ -586,6 +594,10 @@ export async function generateFeedback(
 
   try {
     const client = getOpenAIClient();
+    if (!client) {
+      throw new Error('OpenAI client unavailable');
+    }
+
     const response = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [{ role: 'system', content: systemMessageContent }],
