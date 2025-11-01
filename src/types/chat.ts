@@ -1,14 +1,26 @@
 import { Lesson, LearningProgress, StudentProgress, ContentType } from './lesson';
 
 // Define MessageType separately to avoid circular dependencies
-export type MessageType = 'user' | 'assistant' | 'system' | 'challenge' | 'feedback';
+export type MessageType =
+  | 'user'
+  | 'assistant'
+  | 'system'
+  | 'challenge'
+  | 'feedback'
+  | 'flashcards';
 export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading' | 'logical';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'beginner' | 'intermediate' | 'advanced';
 
-export type MessageContent = 
-  | string 
+export type Flashcard = {
+  front: string;
+  back: string;
+};
+
+export type MessageContent =
+  | string
   | Challenge
-  | FeedbackContent;
+  | FeedbackContent
+  | Flashcard[];
 
 export interface BaseMessage {
   id: string;
@@ -63,7 +75,18 @@ export interface FeedbackMessage extends Omit<BaseMessage, 'type' | 'content'> {
   content: FeedbackContent;
 }
 
-export type Message = UserMessage | AssistantMessage | ChallengeMessage | FeedbackMessage;
+export interface FlashcardMessage extends Omit<BaseMessage, 'type' | 'content'> {
+  type: 'flashcards';
+  role: 'assistant';
+  content: Flashcard[];
+}
+
+export type Message =
+  | UserMessage
+  | AssistantMessage
+  | ChallengeMessage
+  | FeedbackMessage
+  | FlashcardMessage;
 
 export interface UIMessage {
   id: string;

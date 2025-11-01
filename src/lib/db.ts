@@ -675,3 +675,18 @@ export async function getActionableNotes(userId: string): Promise<DatabaseNote[]
 
   return data || [];
 }
+
+/**
+ * Find user by email (for authentication)
+ */
+export async function findUserByEmail(email: string): Promise<UserProfile | undefined> {
+  const users = await getUsers();
+  return users.find(u => u.email === email);
+}
+
+/**
+ * Add a new user
+ */
+export async function addUser(user: UserProfile): Promise<void> {
+  await saveUser(user);
+}
