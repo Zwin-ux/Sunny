@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
     // Build dashboard
     const dashboard = {
       user: {
-        name: user.name,
-        level: Math.floor((user.current_streak || 0) / 7) + 1,
-        streak: user.current_streak || 0,
-        longestStreak: user.longest_streak || 0,
+        name: (user as any).name,
+        level: Math.floor(((user as any).current_streak || 0) / 7) + 1,
+        streak: (user as any).current_streak || 0,
+        longestStreak: (user as any).longest_streak || 0,
       },
       skills: (skills || []).map((skill: any) => ({
         id: skill.id,

@@ -8,7 +8,7 @@ import {
   LearningState,
   AgentEvent
 } from './types';
-import { StudentProfile } from '../../types/chat';
+import { StudentProfile } from '@/types/chat';
 
 export interface AgentManagerConfig {
   enabledAgents: AgentType[];

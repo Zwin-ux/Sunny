@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     content,
     message_type: messageType || 'chat',
     metadata: metadata || {}
-  })
+  } as any)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

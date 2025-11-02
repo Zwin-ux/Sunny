@@ -1,3 +1,14 @@
-Need to install the following packages:
-supabase@2.54.11
-Ok to proceed? (y) Terminate batch job (Y/N)? 
+// Supabase types - generated automatically
+// This file will be populated when Supabase is configured
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export interface Database {
+  // Database types will be generated here
+}

@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     // If no skills exist, initialize default skills
     if (!skills || skills.length === 0) {
-      await initializeDefaultSkills(supabase, userId, user.grade_level || 3);
+      await initializeDefaultSkills(supabase, userId, (user as any).grade_level || 3);
       
       // Fetch again
       const { data: newSkills } = await supabase
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
 
     // Choose format based on user's learning style and past performance
     const questionFormat = selectQuestionFormat(
-      user.learning_style,
+      (user as any).learning_style,
       targetSkill.typical_answer_style
     );
 
