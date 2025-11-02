@@ -1,9 +1,9 @@
-import NextAuth, { type NextAuthOptions, type SessionStrategy } from "next-auth";
+import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { findUserByEmail } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -21,9 +21,7 @@ export const authOptions: NextAuthOptions = {
       }
     })
   ],
-  session: { strategy: "jwt" as SessionStrategy },
-  secret: process.env.NEXTAUTH_SECRET || 'your-secret-key-change-this-in-production',
-  debug: process.env.NODE_ENV === 'development'
+  session: { strategy: "jwt" }
 };
 
 const handler = NextAuth(authOptions);

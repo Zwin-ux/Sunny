@@ -1,5 +1,8 @@
 import { Lesson, ContentType } from '../../types/lesson';
-import beeLesson from './bees';
+// import beeLesson from './bees';
+import { LessonLoader } from './LessonLoader';
+// import path from 'path';
+import { seedLessons } from '@/data/lessons/seedLessons';
 
 /**
  * LessonRepository is a singleton that manages all lessons
@@ -9,11 +12,15 @@ class LessonRepository {
   private topicIndex: Map<string, Set<string>> = new Map(); // Maps topics to lesson IDs
   private keywordIndex: Map<string, Set<string>> = new Map(); // Maps keywords to lesson IDs
   private difficultyIndex: Map<string, Set<string>> = new Map(); // Maps difficulty levels to lesson IDs
-  private contentTypeIndex: Map<string, Map<string, string[]>> = new Map(); // Maps content types to lesson IDs and content IDs
+  private contentTypeIndex: Map<ContentType, Map<string, string[]>> = new Map(); // Maps content types to lesson IDs and content IDs
   private static instance: LessonRepository;
 
   private constructor() {
-    this.initializeLessons();
+    try {
+      this.initializeLessons();
+    } catch (error) {
+      console.error('Error initializing lessons:', error);
+    }
   }
 
   public static getInstance(): LessonRepository {
@@ -24,13 +31,80 @@ class LessonRepository {
   }
 
   private initializeLessons(): void {
-    // Initialize with default lessons
-    this.addLesson(beeLesson);
+    try {
+      if (this.lessons.size > 0) {
+        return;
+      }
+
+      seedLessons.forEach(lesson => this.addLesson(lesson));
+    } catch (error) {
+      console.error('Error initializing lessons:', error);
+    }
   }
 
+  /**
+   * Load lessons from a directory containing Markdown and JSON files
+   * @param directoryPath Path to directory containing lesson files
+   */
+  public loadLessonsFromDirectory(directoryPath: string): void {
+    try {
+      const lessons = LessonLoader.loadLessonsFromDirectory(directoryPath);
+      lessons.forEach(lesson => this.addLesson(lesson));
+      console.log(`Loaded ${lessons.length} lessons from ${directoryPath}`);
+    } catch (error) {
+      console.error(`Error loading lessons from directory ${directoryPath}:`, error);
+    }
+  }
 
+  /**
+   * Load a single lesson from a Markdown file
+   * @param filePath Path to Markdown file
+   */
+  public loadMarkdownLesson(filePath: string): void {
+    try {
+      const lesson = LessonLoader.loadMarkdownLesson(filePath);
+      this.addLesson(lesson);
+      console.log(`Loaded lesson ${lesson.id} from ${filePath}`);
+    } catch (error) {
+      console.error(`Error loading markdown lesson from ${filePath}:`, error);
+    }
+  }
+
+  /**
+   * Load a single lesson from a JSON file
+   * @param filePath Path to JSON file
+   */
+  public loadJsonLesson(filePath: string): void {
+    try {
+      const lesson = LessonLoader.loadJsonLesson(filePath);
+      this.addLesson(lesson);
+      console.log(`Loaded lesson ${lesson.id} from ${filePath}`);
+    } catch (error) {
+      console.error(`Error loading JSON lesson from ${filePath}:`, error);
+    }
+  }
 
   public addLesson(lesson: Lesson): void {
+    // Ensure content array exists
+    if (!lesson.content) {
+      lesson.content = [];
+    }
+    
+    // Ensure topics array exists
+    if (!lesson.topics || !Array.isArray(lesson.topics)) {
+      lesson.topics = [];
+    }
+    
+    // Ensure keywords array exists
+    if (!lesson.keywords || !Array.isArray(lesson.keywords)) {
+      lesson.keywords = [];
+    }
+    
+    // Ensure learningObjectives array exists
+    if (!lesson.learningObjectives || !Array.isArray(lesson.learningObjectives)) {
+      lesson.learningObjectives = [];
+    }
+    
     this.lessons.set(lesson.id, lesson);
     
     // Index the lesson by topics
@@ -59,16 +133,18 @@ class LessonRepository {
     this.difficultyIndex.get(difficulty)?.add(lesson.id);
     
     // Index the lesson content by content type
-    lesson.content.forEach(content => {
-      if (!this.contentTypeIndex.has(content.type)) {
-        this.contentTypeIndex.set(content.type, new Map());
-      }
-      const contentTypeMap = this.contentTypeIndex.get(content.type);
-      if (!contentTypeMap?.has(lesson.id)) {
-        contentTypeMap?.set(lesson.id, []);
-      }
-      contentTypeMap?.get(lesson.id)?.push(content.id);
-    });
+    if (lesson.content && Array.isArray(lesson.content)) {
+      lesson.content.forEach(content => {
+        if (!this.contentTypeIndex.has(content.type)) {
+          this.contentTypeIndex.set(content.type, new Map());
+        }
+        const contentTypeMap = this.contentTypeIndex.get(content.type);
+        if (!contentTypeMap?.has(lesson.id)) {
+          contentTypeMap?.set(lesson.id, []);
+        }
+        contentTypeMap?.get(lesson.id)?.push(content.id);
+      });
+    }
   }
 
   public getLesson(id: string): Lesson | undefined {
@@ -109,8 +185,8 @@ class LessonRepository {
     // Otherwise, fall back to partial matching
     return this.getAllLessons().filter(lesson => 
       lesson.title.toLowerCase().includes(normalizedTopic) ||
-      lesson.topics.some(t => t.toLowerCase().includes(normalizedTopic)) ||
-      lesson.keywords.some(k => k.toLowerCase().includes(normalizedTopic))
+      (lesson.topics && Array.isArray(lesson.topics) && lesson.topics.some(t => t.toLowerCase().includes(normalizedTopic))) ||
+      (lesson.keywords && Array.isArray(lesson.keywords) && lesson.keywords.some(k => k.toLowerCase().includes(normalizedTopic)))
     );
   }
 
@@ -160,22 +236,22 @@ class LessonRepository {
     return this.getAllLessons().filter(lesson => 
       lesson.title.toLowerCase().includes(normalizedQuery) ||
       lesson.description.toLowerCase().includes(normalizedQuery) ||
-      lesson.topics.some(topic => topic.toLowerCase().includes(normalizedQuery)) ||
-      lesson.keywords.some(keyword => keyword.toLowerCase().includes(normalizedQuery)) ||
-      lesson.learningObjectives.some(obj => obj.toLowerCase().includes(normalizedQuery))
+      (lesson.topics && Array.isArray(lesson.topics) && lesson.topics.some(topic => topic.toLowerCase().includes(normalizedQuery))) ||
+      (lesson.keywords && Array.isArray(lesson.keywords) && lesson.keywords.some(keyword => keyword.toLowerCase().includes(normalizedQuery))) ||
+      (lesson.learningObjectives && Array.isArray(lesson.learningObjectives) && lesson.learningObjectives.some(obj => obj.toLowerCase().includes(normalizedQuery)))
     );
   }
 
   public getLessonContent(lessonId: string, contentId: string) {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return null;
+    if (!lesson || !lesson.content) return null;
     
     return lesson.content.find(item => item.id === contentId) || null;
   }
 
   public getNextContent(lessonId: string, currentContentId: string) {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return null;
+    if (!lesson || !lesson.content || !Array.isArray(lesson.content)) return null;
     
     const currentIndex = lesson.content.findIndex(item => item.id === currentContentId);
     if (currentIndex === -1 || currentIndex >= lesson.content.length - 1) {
@@ -187,7 +263,7 @@ class LessonRepository {
 
   public getPreviousContent(lessonId: string, currentContentId: string) {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return null;
+    if (!lesson || !lesson.content || !Array.isArray(lesson.content)) return null;
     
     const currentIndex = lesson.content.findIndex(item => item.id === currentContentId);
     if (currentIndex <= 0) {
@@ -198,7 +274,7 @@ class LessonRepository {
   }
   
   // Find lessons that have specific content types
-  public findLessonsByContentType(contentType: string): Lesson[] {
+  public findLessonsByContentType(contentType: ContentType): Lesson[] {
     const contentTypeMap = this.contentTypeIndex.get(contentType);
     if (!contentTypeMap) return [];
     
@@ -208,9 +284,9 @@ class LessonRepository {
   }
   
   // Get content items of a specific type from a lesson
-  public getLessonContentByType(lessonId: string, contentType: string): any[] {
+  public getLessonContentByType(lessonId: string, contentType: ContentType): any[] {
     const lesson = this.getLesson(lessonId);
-    if (!lesson) return [];
+    if (!lesson || !lesson.content || !Array.isArray(lesson.content)) return [];
     
     return lesson.content.filter(item => item.type === contentType);
   }
@@ -224,7 +300,7 @@ class LessonRepository {
     // If difficulty is specified, filter by difficulty
     if (difficulty) {
       const difficultyMatches = topicMatches.filter(lesson => lesson.difficulty === difficulty);
-      if (difficultyMatches.length > 0) {
+      if (difficultyMatches && difficultyMatches.length > 0) {
         return difficultyMatches[0];
       }
     }
@@ -237,12 +313,29 @@ class LessonRepository {
   public getAvailableTopics(): string[] {
     const topics = new Set<string>();
     this.getAllLessons().forEach(lesson => {
-      lesson.topics.forEach(topic => topics.add(topic));
+      if (lesson.topics && Array.isArray(lesson.topics)) {
+        lesson.topics.forEach(topic => topics.add(topic));
+      }
     });
     return Array.from(topics);
   }
 }
 
+// Export the class
+export { LessonRepository };
 
+// Create a proxy object that lazily initializes the repository
+// This prevents initialization during build time
+const repositoryProxy = new Proxy({} as any, {
+  get(target, prop) {
+    // Lazy initialization on first access
+    if (!target._instance) {
+      target._instance = LessonRepository.getInstance();
+    }
+    const instance = target._instance;
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
+  }
+});
 
-export default LessonRepository.getInstance();
+export default repositoryProxy;

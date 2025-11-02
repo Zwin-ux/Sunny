@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { QuizQuestion } from '@/types/lesson';
+import { Challenge } from '@/types/chat'; // Import Challenge type
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 
 interface QuizProps {
-  question: QuizQuestion;
-  onAnswer: (isCorrect: boolean) => void;
+  question: Challenge; // Use Challenge type
+  onAnswer: (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => void; // Updated onAnswer prop
   onNext?: () => void;
   showFeedback?: boolean;
   selectedAnswer?: string | string[] | null;
@@ -24,11 +24,22 @@ const Quiz: React.FC<QuizProps> = ({
     externalSelectedAnswer || null
   );
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const isCorrect = selectedAnswer 
-    ? Array.isArray(selectedAnswer) 
-      ? selectedAnswer.every(ans => (question.correctAnswer as string[]).includes(ans))
-      : selectedAnswer === question.correctAnswer
-    : false;
+
+  const checkCorrectness = (answer: string | string[] | null): boolean => {
+    if (answer === null) return false;
+
+    if (Array.isArray(question.correctAnswer)) {
+      if (!Array.isArray(answer)) return false;
+      const correctAnswersArray = question.correctAnswer as string[];
+      const userAnswerArray = answer as string[];
+      return userAnswerArray.every((ans: string) => correctAnswersArray.includes(ans)) &&
+             correctAnswersArray.every((ans: string) => userAnswerArray.includes(ans));
+    } else {
+      return answer === question.correctAnswer;
+    }
+  };
+
+  const isCorrect = checkCorrectness(selectedAnswer);
 
   // Update internal state if external selectedAnswer changes
   useEffect(() => {
@@ -43,8 +54,16 @@ const Quiz: React.FC<QuizProps> = ({
 
     if (question.type === 'multiple-choice' || question.type === 'true-false') {
       setSelectedAnswer(option);
-    } else if (question.type === 'short-answer') {
-      // For short answer, we'll handle submission separately
+    } else if (question.type === 'matching' || question.type === 'pattern') {
+      // For multi-select types, toggle selection
+      setSelectedAnswer(prev => {
+        if (Array.isArray(prev)) {
+          return prev.includes(option) ? prev.filter((item: string) => item !== option) : [...prev, option];
+        } else {
+          return [option]; // Start new array if not already multi-select
+        }
+      });
+    } else if (question.type === 'short-answer' || question.type === 'open-ended') {
       setSelectedAnswer(option);
     }
   };
@@ -53,7 +72,7 @@ const Quiz: React.FC<QuizProps> = ({
     if (!selectedAnswer) return;
     
     setHasSubmitted(true);
-    onAnswer(isCorrect);
+    onAnswer(isCorrect, question.id, question, selectedAnswer);
   };
 
   const handleNext = () => {
@@ -61,8 +80,8 @@ const Quiz: React.FC<QuizProps> = ({
   };
 
   const renderOptions = () => {
-    if (question.type === 'multiple-choice' && question.options) {
-      return question.options.map((option, index) => (
+    if (question.type === 'multiple-choice' || question.type === 'true-false') {
+      return question.options?.map((option: string, index: number) => (
         <motion.button
           key={index}
           whileHover={{ scale: 1.02 }}
@@ -70,12 +89,12 @@ const Quiz: React.FC<QuizProps> = ({
           onClick={() => handleOptionSelect(option)}
           className={`w-full p-4 mb-3 text-left rounded-lg transition-colors ${
             hasSubmitted
-              ? option === question.correctAnswer
+              ? checkCorrectness(option) // Check if this specific option is correct
                 ? 'bg-green-100 border-2 border-green-500'
-                : selectedAnswer === option
+                : (selectedAnswer === option || (Array.isArray(selectedAnswer) && selectedAnswer.includes(option)))
                 ? 'bg-red-100 border-2 border-red-500'
                 : 'bg-gray-100 border border-gray-200 opacity-70'
-              : selectedAnswer === option
+              : (selectedAnswer === option || (Array.isArray(selectedAnswer) && selectedAnswer.includes(option)))
               ? 'bg-blue-100 border-2 border-blue-500'
               : 'bg-white border border-gray-200 hover:border-blue-300'
           }`}
@@ -84,9 +103,9 @@ const Quiz: React.FC<QuizProps> = ({
           <div className="flex items-center">
             {hasSubmitted && (
               <span className="mr-3">
-                {option === question.correctAnswer ? (
+                {checkCorrectness(option) ? (
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                ) : selectedAnswer === option ? (
+                ) : (selectedAnswer === option || (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))) ? (
                   <XCircle className="w-5 h-5 text-red-500" />
                 ) : null}
               </span>
@@ -95,45 +114,7 @@ const Quiz: React.FC<QuizProps> = ({
           </div>
         </motion.button>
       ));
-    } else if (question.type === 'true-false') {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {['True', 'False'].map((option) => (
-            <motion.button
-              key={option}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleOptionSelect(option)}
-              className={`p-4 rounded-lg transition-colors ${
-                hasSubmitted
-                  ? option === question.correctAnswer
-                    ? 'bg-green-100 border-2 border-green-500'
-                    : selectedAnswer === option
-                    ? 'bg-red-100 border-2 border-red-500'
-                    : 'bg-gray-100 border border-gray-200 opacity-70'
-                  : selectedAnswer === option
-                  ? 'bg-blue-100 border-2 border-blue-500'
-                  : 'bg-white border border-gray-200 hover:border-blue-300'
-              }`}
-              disabled={hasSubmitted}
-            >
-              <div className="flex items-center justify-center">
-                {hasSubmitted && (
-                  <span className="mr-2">
-                    {option === question.correctAnswer ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : selectedAnswer === option ? (
-                      <XCircle className="w-5 h-5 text-red-500" />
-                    ) : null}
-                  </span>
-                )}
-                <span className="font-medium">{option}</span>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      );
-    } else if (question.type === 'short-answer') {
+    } else if (question.type === 'short-answer' || question.type === 'open-ended') {
       return (
         <div className="space-y-4">
           <input
@@ -153,6 +134,44 @@ const Quiz: React.FC<QuizProps> = ({
               Submit
             </button>
           )}
+        </div>
+      );
+    } else if (question.type === 'pattern' || question.type === 'matching') {
+      return (
+        <div className="grid grid-cols-2 gap-4">
+          {question.options?.map((option: string, index: number) => (
+            <motion.button
+              key={index}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleOptionSelect(option)}
+              className={`w-full p-4 mb-3 text-left rounded-lg transition-colors ${
+                hasSubmitted
+                  ? (Array.isArray(question.correctAnswer) && question.correctAnswer.includes(option))
+                    ? 'bg-green-100 border-2 border-green-500'
+                    : (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
+                    ? 'bg-red-100 border-2 border-red-500'
+                    : 'bg-gray-100 border border-gray-200 opacity-70'
+                  : (Array.isArray(selectedAnswer) && selectedAnswer.includes(option))
+                  ? 'bg-blue-100 border-2 border-blue-500'
+                  : 'bg-white border border-gray-200 hover:border-blue-300'
+              }`}
+              disabled={hasSubmitted}
+            >
+              <div className="flex items-center">
+                {hasSubmitted && (
+                  <span className="mr-3">
+                    {(Array.isArray(question.correctAnswer) && question.correctAnswer.includes(option)) ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (Array.isArray(selectedAnswer) && selectedAnswer.includes(option)) ? (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    ) : null}
+                  </span>
+                )}
+                <span>{option}</span>
+              </div>
+            </motion.button>
+          ))}
         </div>
       );
     }

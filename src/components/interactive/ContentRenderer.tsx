@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Lesson, ContentType, MediaContent, QuizQuestion } from '@/types/lesson';
+import { Challenge } from '@/types/chat'; // Import Challenge type
 import Quiz from './Quiz';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Image as ImageIcon, Info } from 'lucide-react';
+import { Play, Image as ImageIcon, Info, Lightbulb, ChevronRight, ChevronLeft } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface ContentRendererProps {
   content: Lesson['content'][number];
-  onAnswer?: (isCorrect: boolean) => void;
+  onAnswer?: (isCorrect: boolean, questionId: string, challenge: Challenge, userAnswer: string | string[]) => void; // Updated onAnswer prop
   onNext?: () => void;
   onPrevious?: () => void;
   isFirst?: boolean;
@@ -64,7 +66,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
         return (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center space-x-3">
-              <button className="p-3 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors">
+              <button className="p-3 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors" aria-label="Play audio">
                 <Play className="w-5 h-5" />
               </button>
               <div className="flex-1">
@@ -85,7 +87,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
 
   const renderContent = () => {
     switch (content.type) {
-      case 'text':
+      case ContentType.Text:
         return (
           <div className="prose max-w-none">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
@@ -98,59 +100,44 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             </div>
           </div>
         );
-      case 'quiz':
+      case ContentType.Quiz:
+        const challengeContent = content.content as Challenge;
         return (
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Quiz Time!</h2>
             <Quiz
-              question={content.content as QuizQuestion}
+              question={challengeContent}
               onAnswer={onAnswer || (() => {})}
               onNext={onNext}
               isLastQuestion={isLast}
             />
           </div>
         );
-      case 'fact':
-        return (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <Info className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-yellow-800">Did You Know?</h3>
-                <div className="mt-2 text-yellow-700">
-                  <p>{content.content as string}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      case 'video':
-      case 'diagram':
+      case ContentType.Image:
+      case ContentType.Video:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">{content.title}</h2>
-            {content.media && content.media.length > 0 ? (
-              renderMedia(content.media[0])
-            ) : (
-              <div className="p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-200 mb-3">
-                  {content.type === 'video' ? (
-                    <Play className="h-6 w-6 text-gray-500" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            {!content.media || !Array.isArray(content.media) || content.media.length === 0 ? (
+              <div className="p-6 bg-gray-100 rounded-lg text-center border border-gray-200">
+                <div className="flex justify-center mb-3">
+                  {content.type === ContentType.Video ? (
+                    <Play className="w-8 h-8 text-gray-400" />
                   ) : (
-                    <ImageIcon className="h-6 w-6 text-gray-500" />
+                    <ImageIcon className="w-8 h-8 text-gray-400" />
                   )}
                 </div>
                 <h3 className="text-lg font-medium text-gray-700 mb-1">
-                  {content.type === 'video' ? 'Video Content' : 'Diagram'}
+                  {content.type === ContentType.Video ? 'Video Content' : 'Diagram'}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {content.type === 'video' 
+                  {content.type === ContentType.Video 
                     ? 'This lesson includes a video explanation.'
                     : 'This lesson includes a helpful diagram.'}
                 </p>
               </div>
+            ) : (
+              renderMedia(content.media[0])
             )}
             {content.content && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg">
@@ -159,9 +146,66 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             )}
           </div>
         );
+      case ContentType.Challenge:
+        const challenge = content.content as Challenge;
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
+              <h3 className="text-lg font-semibold text-yellow-800 mb-2">Challenge</h3>
+              <p className="text-yellow-700">{challenge.question || 'Complete this challenge!'}</p>
+              {challenge.options && (
+                <ul className="mt-2 space-y-1">
+                  {challenge.options.map((option, index) => (
+                    <li key={index} className="text-yellow-700">- {option}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        );
+      case ContentType.Interactive:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            <div className="p-6 bg-purple-50 border border-purple-100 rounded-lg text-center">
+              <p className="text-purple-800">Interactive content coming soon!</p>
+            </div>
+          </div>
+        );
+      case ContentType.Fact:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+            <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex items-start space-x-3">
+              <Lightbulb className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-medium text-green-800">Did You Know?</h3>
+                <p className="text-green-700">{content.content as string}</p>
+              </div>
+            </div>
+          </div>
+        );
       default:
+        if (typeof content.content === 'string') {
+          return (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">{content.title}</h2>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="prose max-w-none">
+                  <ReactMarkdown>{content.content}</ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          );
+        }
         return <p>Unsupported content type</p>;
     }
+  };
+
+  const renderInteractiveContent = (content: any) => {
+    // Add implementation for rendering interactive content
+    return <p>Interactive content is not implemented yet.</p>;
   };
 
   return (
@@ -181,23 +225,24 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
             <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between">
               <button
                 onClick={onPrevious}
+                className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 disabled={isFirst}
-                className={`px-4 py-2 rounded-lg border ${
-                  isFirst
-                    ? 'text-gray-400 border-gray-200 cursor-not-allowed'
-                    : 'text-blue-600 border-blue-200 hover:bg-blue-50'
-                }`}
+                aria-label="Previous content"
               >
-                Previous
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous</span>
               </button>
               
               <div className="flex items-center space-x-2">
-                {content.type === 'quiz' || onNext ? null : (
+                {content.type === ContentType.Quiz || onNext ? null : (
                   <button
                     onClick={onNext}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    disabled={isLast || !showNavigation}
+                    aria-label="Next content"
                   >
-                    {isLast ? 'Finish' : 'Next'}
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Next</span>
                   </button>
                 )}
               </div>
@@ -206,14 +251,18 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
         </motion.div>
       </AnimatePresence>
 
-      {content.type === 'quiz' && (
+      {content.type === ContentType.Quiz && (
         <div className="mt-4 text-sm text-gray-500 text-center">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setShowExplanation(!showExplanation)}
-            className="text-blue-600 hover:text-blue-800 hover:underline"
+            className="mt-2 px-3 py-1 bg-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-300 transition-colors"
+            title="Toggle explanation"
+            aria-label={showExplanation ? "Hide explanation" : "Show explanation or hint"}
           >
             {showExplanation ? 'Hide explanation' : 'Need help with this question?'}
-          </button>
+          </motion.button>
           
           <AnimatePresence>
             {showExplanation && (
@@ -225,7 +274,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = ({
               >
                 <p className="text-left">
                   <span className="font-medium">Hint:</span> {
-                    (content.content as QuizQuestion).explanation || 
+                    (content.content as Challenge).explanation || 
                     'Think carefully about the question and try to eliminate obviously wrong answers first.'
                   }
                 </p>

@@ -14,4 +14,7 @@ services:
         value: 22.16.0
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
+      - key: OPENAI_API_KEY
+        sync: false # Mark as false to prevent accidental logging/exposure
+        value: "your_openai_api_key_here" # Replace with your actual key or use Render's secret management
     autoDeploy: true

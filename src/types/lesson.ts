@@ -1,5 +1,4 @@
-export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
-export type ContentType = 'text' | 'video' | 'quiz' | 'diagram' | 'fact' | 'markdown';
+import { LearningStyle, DifficultyLevel, Challenge } from './chat';
 
 // Format for Markdown content metadata
 export interface MarkdownContent {
@@ -19,19 +18,33 @@ export interface MediaContent {
 
 export interface QuizQuestion {
   id: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer';
+  type: 'multiple-choice' | 'pattern' | 'open-ended' | 'matching' | 'true-false' | 'short-answer';
   question: string;
   options?: string[];
   correctAnswer: string | string[];
   explanation: string;
   points: number;
+  difficulty?: DifficultyLevel;
+  learningStyle?: LearningStyle[];
+  followUpQuestions?: string[];
+  realWorldExample?: string;
+}
+
+export enum ContentType {
+  Text = 'text',
+  Image = 'image',
+  Video = 'video',
+  Quiz = 'quiz',
+  Challenge = 'challenge',
+  Interactive = 'interactive',
+  Fact = 'fact'
 }
 
 export interface LessonContent {
   id: string;
   type: ContentType;
   title: string;
-  content: string | QuizQuestion | MediaContent | MarkdownContent;
+  content: string | QuizQuestion | MediaContent | MarkdownContent | Challenge;
   difficulty: DifficultyLevel;
   estimatedDuration: number; // in minutes
   prerequisites?: string[];
@@ -77,8 +90,7 @@ export interface StudentProgress {
   lessons: {
     [lessonId: string]: LearningProgress;
   };
-  totalPoints: number;
-  level: number;
+  // NOTE: totalPoints and level removed - use XPContext as single source of truth
   achievements: string[];
   lastActive: string;
   learningPreferences: {

@@ -1,5 +1,10 @@
 # Sunny AI for Kids
 
+![GitHub last commit](https://img.shields.io/github/last-commit/Zwin-ux/Sunny?logo=github)
+![Vercel Deploy](https://img.shields.io/badge/deploy-Vercel-black?logo=vercel)
+
+Current Chat UI: v2 (look for the yellow v2 tag in the chat header). Set `NEXT_PUBLIC_APP_VERSION` to override the visible tag per build.
+
 A cheerful, educational AI chat application designed to make learning fun for children while providing customizable lesson plans for teachers.
 
 ![Sunny AI for Kids](public/rainbow.png)
@@ -7,6 +12,7 @@ A cheerful, educational AI chat application designed to make learning fun for ch
 ---
 
 ## 🎨 Claymation-Inspired, Accessible Design
+
 - Playful, tactile claymation visuals throughout the app
 - Large, colorful buttons and high-contrast text for accessibility
 - Animations and floating elements to keep young learners engaged
@@ -31,6 +37,7 @@ A cheerful, educational AI chat application designed to make learning fun for ch
 ---
 
 ## 🖼️ Claymation & Educational Assets
+
 - All claymation and educational images are in the `public/` directory.
 - Images are organized by category for easy reference and extension.
 - You may add your own PNG or SVG assets for new lessons or activities.
@@ -66,19 +73,53 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 
 ### Project Structure
 
-```
+```bash
 sunny-ai-for-kids/
 ├── app/                  # Next.js app router pages
+│   ├── api/              # API routes for learn and user data
 │   ├── images/           # Learning gallery page
 │   ├── teacher/          # Teacher dashboard and lesson plan management
 │   └── page.tsx          # Main student chat interface
 ├── components/           # Reusable UI components
 ├── lib/                  # Utility functions and data models
+│   ├── cache.ts          # In-memory caching for API performance
+│   ├── demo-mode.ts      # Demo mode utilities and mock data
 │   ├── lesson-plans.ts   # Lesson plan structure and sample data
-│   └── sunny-ai.ts       # AI response generation (mock implementation)
+│   ├── logger.ts         # Structured logging for production monitoring
+│   ├── rate-limit.ts     # API rate limiting protection
+│   └── sunny-ai.ts       # OpenAI integration for educational content
 ├── public/               # Static assets
 └── styles/               # Global styles
 ```
+
+## Environment Variables and Configuration
+
+Sunny uses environment variables for configuration. Create a `.env.local` file in the root directory with the following variables:
+
+```env
+# OpenAI API Key for AI functionality
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Demo Mode - set to 'true' to enable demo mode with mock data
+SUNNY_DEMO_MODE=true
+```
+
+### Demo Mode
+
+Sunny includes a robust demo mode that allows you to showcase the application even when:
+
+- You don't have an OpenAI API key
+- You're in an environment without internet access
+- You want to demonstrate the UI without making actual API calls
+
+When demo mode is active (either by setting `SUNNY_DEMO_MODE=true` or when in production without proper API configuration), the application will:
+
+- Use mock lesson plans and educational content
+- Simulate AI responses with pre-defined, educational content
+- Show sample user profiles and progress data
+- Maintain full UI functionality without backend dependencies
+
+This makes Sunny perfect for demonstrations, presentations, and development without requiring actual API access.
 
 ## Customizing Lesson Plans
 

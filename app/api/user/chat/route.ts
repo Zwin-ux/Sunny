@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../../auth/[...nextauth]/route'
 import { findUserByEmail, saveUsers, getUsers } from '@/lib/db'
-import { getServerSession as getServerSessionHelper } from '@/lib/auth'
 
 export async function POST(req: Request) {
-  const session = await getServerSessionHelper()
+  const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { message } = await req.json()
   const users = await getUsers()

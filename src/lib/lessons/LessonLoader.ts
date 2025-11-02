@@ -1,13 +1,45 @@
-// Lazy load Node.js modules to avoid bundling them in client builds
-const fs = () => require('fs') as typeof import('fs');
-const path = () => require('path') as typeof import('path');
+// import path from 'path';
 import matter from 'gray-matter';
-import { Lesson, MarkdownContent, LessonContent } from '../../types/lesson';
+
+// Import fs and path only on server side
+const fs = typeof window === 'undefined' ? require('fs') : null;
+const path = typeof window === 'undefined' ? require('path') : null;
+import { Lesson, MarkdownContent, LessonContent, ContentType } from '../../types/lesson';
 
 /**
  * LessonLoader provides utilities for loading lessons from Markdown and JSON files
  */
 export class LessonLoader {
+  /**
+   * Provides a fallback lesson when running in a browser environment
+   * @param filePath Path that was attempted to be loaded
+   * @returns A minimal default lesson
+   */
+  public static getFallbackLesson(filePath: string): Lesson {
+    const filename = path ? path.basename(filePath, path.extname(filePath)) : 'fallback-lesson';
+    return {
+      id: filename,
+      title: 'Browser Fallback Lesson',
+      description: 'This is a fallback lesson displayed when running in browser environment.',
+      topics: ['example'],
+      difficulty: 'beginner',
+      targetAgeRange: { min: 6, max: 12 },
+      learningObjectives: ['Understand client/server rendering'],
+      keywords: ['example', 'fallback'],
+      content: [
+        {
+          id: 'fallback-content-1',
+          type: ContentType.Text,
+          title: 'Fallback Content',
+          content: 'This content is a fallback for browser rendering.',
+          difficulty: 'beginner',
+          estimatedDuration: 5
+        }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
   /**
    * Load a lesson from a Markdown file with frontmatter
    * @param filePath Path to the markdown file
@@ -15,15 +47,26 @@ export class LessonLoader {
    */
   public static loadMarkdownLesson(filePath: string): Lesson {
     try {
-      // Read the file content
-      const fileContent = fs().readFileSync(filePath, 'utf8');
+      // Check if we're in a server environment
+      if (!fs) {
+        console.warn('Attempted to load lesson file in browser environment');
+        return this.getFallbackLesson(filePath);
+      }
+      
+      // Read the file content (server-side only)
+      const fileContent = this.readFileContent(filePath);
+      console.log(`File content for ${filePath}:`, fileContent.substring(0, 100) + '...'); // Log first 100 chars
+      if (!fileContent) {
+        console.error(`fs.readFileSync returned undefined for file: ${filePath}`);
+        throw new Error(`Failed to read file ${filePath}`);
+      }
       
       // Parse frontmatter and content
       const { data: frontmatter, content } = matter(fileContent);
       
       // Extract lesson metadata from frontmatter
       const lesson: Lesson = {
-        id: frontmatter.id || path().basename(filePath, path().extname(filePath)),
+        id: frontmatter.id || path.basename(filePath, path.extname(filePath)),
         title: frontmatter.title || 'Untitled Lesson',
         description: frontmatter.description || '',
         topics: frontmatter.topics || [],
@@ -50,8 +93,19 @@ export class LessonLoader {
    */
   public static loadJsonLesson(filePath: string): Lesson {
     try {
-      // Read and parse the JSON file
-      const fileContent = fs().readFileSync(filePath, 'utf8');
+      // Check if we're in a server environment
+      if (!fs) {
+        console.warn('Attempted to load JSON lesson file in browser environment');
+        return this.getFallbackLesson(filePath);
+      }
+
+      // Read and parse the JSON file (server-side only)
+      const fileContent = this.readFileContent(filePath);
+      console.log(`File content for ${filePath}:`, fileContent.substring(0, 100) + '...'); // Log first 100 chars
+      if (!fileContent) {
+        console.error(`fs.readFileSync returned undefined for file: ${filePath}`);
+        throw new Error(`Failed to read file ${filePath}`);
+      }
       const lessonData = JSON.parse(fileContent);
       
       // Validate required fields
@@ -61,7 +115,7 @@ export class LessonLoader {
       
       // Process any markdown content within the JSON
       if (lessonData.content) {
-        lessonData.content = lessonData.content.map((item: LessonContent) => {
+        lessonData.content = lessonData.content.map((item: any) => {
           if (item.type === 'markdown' && typeof item.content === 'string') {
             // Convert string content to MarkdownContent object
             return {
@@ -111,7 +165,7 @@ export class LessonLoader {
       // Create a content item for this section
       const contentItem: LessonContent = {
         id: `section-${index}`,
-        type: 'markdown',
+        type: ContentType.Text,
         title,
         content: {
           source: sectionContent.trim(),
@@ -134,7 +188,7 @@ export class LessonLoader {
       frontmatter.quizzes.forEach((quiz: any, index: number) => {
         content.push({
           id: `quiz-${index}`,
-          type: 'quiz',
+          type: ContentType.Quiz,
           title: quiz.title || 'Quiz',
           content: quiz,
           difficulty: quiz.difficulty || frontmatter.difficulty || 'beginner',
@@ -146,6 +200,15 @@ export class LessonLoader {
     return content;
   }
   
+  private static readFileContent(file: string): string {
+    try {
+      return fs.readFileSync(file, 'utf8');
+    } catch (error) {
+      console.error(`Error reading file ${file}:`, error);
+      return '';
+    }
+  }
+  
   /**
    * Load all lessons from a directory
    * @param dirPath Directory containing lesson files (.md and .json)
@@ -153,23 +216,36 @@ export class LessonLoader {
    */
   public static loadLessonsFromDirectory(dirPath: string): Lesson[] {
     try {
+      // Check if we're in a server environment
+      if (!fs || !path) {
+        console.warn('Attempted to load lessons from directory in browser environment');
+        return [];
+      }
+
       const lessons: Lesson[] = [];
-      
+
       // Read all files in the directory
-      const files = fs().readdirSync(dirPath);
-      
+      const files = fs.readdirSync(dirPath);
+      console.log(`Files in directory ${dirPath}:`, files);
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        console.warn(`No files found or fs.readdirSync returned invalid data for directory: ${dirPath}`);
+        return [];
+      }
+
       // Process each file based on extension
-      files.forEach(file => {
-      const filePath = path().join(dirPath, file);
-        const ext = path().extname(file).toLowerCase();
-        
+      files.forEach((file: string) => {
+        if (!file) return;
+
+        const filePath = path.join(dirPath, file);
+        const ext = path.extname(file).toLowerCase();
+
         if (ext === '.md') {
           lessons.push(this.loadMarkdownLesson(filePath));
         } else if (ext === '.json') {
           lessons.push(this.loadJsonLesson(filePath));
         }
       });
-      
+
       return lessons;
     } catch (error) {
       console.error(`Error loading lessons from directory ${dirPath}:`, error);
