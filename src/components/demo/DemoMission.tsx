@@ -18,6 +18,7 @@ import {
 import { Question, DifficultyLevel, Answer } from '@/types/demo';
 import { useQuiz } from '@/hooks/useQuiz';
 import { Target, Lightbulb, Sparkles } from 'lucide-react';
+import { useBrainMode } from '@/hooks/useBrainMode';
 
 interface DemoMissionProps {
   initialLevel: DifficultyLevel;
@@ -35,7 +36,15 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
   const [consecutiveWrong, setConsecutiveWrong] = useState(0);
   const [sunnyMessage, setSunnyMessage] = useState('Let\'s do this! 🎯');
   const [startTime, setStartTime] = useState(Date.now());
-  const [showBrainMode, setShowBrainMode] = useState(true);
+  const { settings, updateSettings, isLoaded } = useBrainMode();
+  const [showBrainMode, setShowBrainMode] = useState<boolean>(true);
+
+  // Initialize Brain Mode toggle from persisted settings when loaded
+  useEffect(() => {
+    if (isLoaded) {
+      setShowBrainMode(settings.showThinking);
+    }
+  }, [isLoaded, settings.showThinking]);
 
   const totalQuestions = 7;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
@@ -161,7 +170,11 @@ export function DemoMission({ initialLevel, onComplete }: DemoMissionProps) {
         {/* Brain Mode Toggle */}
         <div className="flex justify-end mb-4">
           <button
-            onClick={() => setShowBrainMode(!showBrainMode)}
+            onClick={() => {
+              const next = !showBrainMode;
+              setShowBrainMode(next);
+              updateSettings({ showThinking: next });
+            }}
             className="text-sm px-4 py-2 rounded-lg border-2 border-purple-300 bg-purple-50 hover:bg-purple-100 transition-colors font-semibold text-purple-700"
           >
             {showBrainMode ? '🧠 Hide' : '🧠 Show'} Brain Mode

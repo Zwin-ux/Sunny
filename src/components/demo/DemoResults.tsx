@@ -214,6 +214,23 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
               Join Waitlist
             </Button>
           </div>
+          {/* Engagement CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              onClick={() => { window.location.href = '/demo'; }}
+              variant="default"
+              className="px-6"
+            >
+              Retry Mission ↻
+            </Button>
+            <Button
+              onClick={() => { window.location.href = '/adaptive-demo'; }}
+              variant="outline"
+              className="px-6"
+            >
+              Try Adaptive Demo 🧠
+            </Button>
+          </div>
           <p className="text-sm text-gray-600">
             Experience the full Learning OS in your dashboard
           </p>
