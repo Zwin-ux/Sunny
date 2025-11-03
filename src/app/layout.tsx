@@ -23,16 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <LanguageProvider>
-            <LearningSessionProvider>
-              <XPProvider>
-                {children}
-                <Toaster position="top-center" richColors />
-              </XPProvider>
-            </LearningSessionProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <RootProviders>{children}</RootProviders>
       </body>
     </html>
   )
