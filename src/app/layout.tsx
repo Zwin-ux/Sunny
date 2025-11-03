@@ -1,6 +1,6 @@
 import React from "react"
 import "./globals.css"
-import { Inter } from "next/font/google"
+// import { Inter } from "next/font/google"
 import { ThemeProvider } from "../components/theme-provider"
 import { LanguageProvider } from "../contexts/LanguageContext"
 import { LearningSessionProvider } from "../contexts/LearningSessionContext"
@@ -8,7 +8,7 @@ import { XPProvider } from "../contexts/XPContext"
 import { Toaster } from "sonner"
 import type { Metadata } from 'next'
 
-const inter = Inter({ subsets: ["latin"] })
+// const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: 'Sunny AI - Your Child\'s AI Learning Companion',
@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <LanguageProvider>
             <LearningSessionProvider>

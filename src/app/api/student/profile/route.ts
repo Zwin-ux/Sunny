@@ -10,6 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { getSkillsByUser, getRecentSessions, getSunnyNotes } from '@/lib/db';
 import { logger } from '@/lib/logger';
