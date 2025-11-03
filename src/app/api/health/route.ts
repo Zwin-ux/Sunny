@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { getAIService } from '@/lib/ai-service';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const health = {
     status: 'healthy',

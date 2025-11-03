@@ -10,6 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getAdminClient, TypedSupabaseClient } from '@/lib/supabase/admin';
 import { getAIService } from '@/lib/ai-service';
 import { logger } from '@/lib/logger';
