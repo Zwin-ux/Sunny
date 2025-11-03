@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Quiz from '@/components/interactive/Quiz';
+import type { GeneratedGame } from '@/lib/chat/game-generator';
 
 export interface Message {
   id: string;
@@ -11,6 +12,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   emotion?: string;
+  game?: GeneratedGame;
 }
 
 interface ChatMessagesProps {
@@ -49,6 +51,62 @@ const DEFAULT_SUGGESTED_PROMPTS = [
     color: 'from-orange-100 to-yellow-100',
   },
 ];
+
+function GameSummaryCard({ game }: { game: GeneratedGame }) {
+  return (
+    <div className="mt-3 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="text-lg font-bold text-amber-700">{game.title}</h4>
+        <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-semibold uppercase text-amber-800">
+          {game.difficulty}
+        </span>
+      </div>
+      <p className="text-sm text-amber-900">{game.overview}</p>
+      <div className="mt-3 grid gap-2 text-sm text-amber-900 md:grid-cols-2">
+        <div className="space-y-1">
+          <h5 className="font-semibold text-amber-800">Setup</h5>
+          <ul className="list-disc pl-5">
+            {game.setup.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="space-y-1">
+          <h5 className="font-semibold text-amber-800">Gameplay</h5>
+          <ul className="list-disc pl-5">
+            {game.gameplay.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-3 text-sm text-amber-900 md:grid-cols-3">
+        <div>
+          <h5 className="font-semibold text-amber-800">Power Ups</h5>
+          <ul className="list-disc pl-5">
+            {game.powerUps.map((power) => (
+              <li key={power}>{power}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h5 className="font-semibold text-amber-800">Materials</h5>
+          <ul className="list-disc pl-5">
+            {game.materials.map((material) => (
+              <li key={material}>{material}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="space-y-1">
+          <h5 className="font-semibold text-amber-800">Quick Stats</h5>
+          <p><span className="font-semibold">Goal:</span> {game.objective}</p>
+          <p><span className="font-semibold">Time:</span> {game.estimatedTime}</p>
+          <p><span className="font-semibold">Remix:</span> {game.remix}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ChatMessages({
   messages,
@@ -103,6 +161,8 @@ export function ChatMessages({
               <p className="text-sm md:text-base whitespace-pre-wrap break-words">
                 {message.content}
               </p>
+
+              {message.game && message.role === 'assistant' && <GameSummaryCard game={message.game} />}
 
               {/* Timestamp */}
               <div
