@@ -202,7 +202,7 @@ export default function LoginPage() {
 
         {/* Trust indicators */}
         <div className="mt-6 text-center text-sm text-gray-600">
-          <p>🔒 Secure & encrypted • 🎓 Trusted by 10,000+ families</p>
+          <p>🔒 Secure & encrypted • 🎓 Built in partnership with families</p>
         </div>
       </motion.div>
     </div>
