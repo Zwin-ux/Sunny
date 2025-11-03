@@ -181,15 +181,11 @@ export default function LandingPage() {
                     <div className="w-8 h-8 rounded-full bg-green-300 border-2 border-white flex items-center justify-center">👦</div>
                     <div className="w-8 h-8 rounded-full bg-purple-300 border-2 border-white flex items-center justify-center">👶</div>
                   </div>
-                  <span className="font-semibold">10,000+ kids learning</span>
+                  <span className="font-semibold">Built together with families</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="ml-1 font-semibold">4.9/5 rating</span>
+                  <span className="ml-1 font-semibold">Join the early access program</span>
                 </div>
               </div>
             </motion.div>

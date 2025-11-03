@@ -11,22 +11,22 @@ import { getCurrentUser, logout } from '@/lib/auth';
 const features = [
   {
     icon: Brain,
-    title: 'Adaptive Learning',
-    description: 'Adjusts to your child\'s pace and learning style',
-    color: 'bg-blue-100 text-blue-600'
+    title: 'Adapts as they learn',
+    description: 'Sunny gently adjusts each question so practice feels encouraging, not overwhelming.',
+    color: 'bg-blue-100 text-blue-600',
   },
   {
     icon: BookOpen,
-    title: 'Interactive Practice',
-    description: 'Questions and activities that keep kids engaged',
-    color: 'bg-green-100 text-green-600'
+    title: 'Hands-on activities',
+    description: 'Short stories, word problems, and mini-games built for curious minds.',
+    color: 'bg-green-100 text-green-600',
   },
   {
     icon: Users,
-    title: 'Progress Tracking',
-    description: 'See what your child is learning',
-    color: 'bg-purple-100 text-purple-600'
-  }
+    title: 'Family view',
+    description: 'Follow progress at a glance and celebrate wins together.',
+    color: 'bg-purple-100 text-purple-600',
+  },
 ];
 
 // Testimonials removed - will add real feedback after launch
@@ -111,7 +111,7 @@ export default function LandingPage() {
             <h1 className="text-5xl lg:text-6xl font-black mb-4">
               Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500">{user.childName || user.name || 'Friend'}</span>!
             </h1>
-            <p className="text-xl text-gray-600 mb-2">Great to see you again!</p>
+            <p className="text-xl text-gray-600 mb-2">We saved your spot—ready for a new challenge?</p>
             {user.currentStreak && user.currentStreak > 0 && (
               <div className="inline-flex items-center gap-2 bg-orange-200 px-4 py-2 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mt-4">
                 <span className="text-2xl">🔥</span>
@@ -132,7 +132,7 @@ export default function LandingPage() {
             >
               <div className="text-4xl mb-3">📊</div>
               <h3 className="text-xl font-bold mb-2">Go to Dashboard</h3>
-              <p className="text-gray-600">Your learning home base</p>
+              <p className="text-gray-600">Check today's missions and celebrate wins.</p>
             </motion.div>
 
             <motion.div
@@ -145,7 +145,7 @@ export default function LandingPage() {
             >
               <div className="text-4xl mb-3">✨</div>
               <h3 className="text-xl font-bold mb-2">Try Demo</h3>
-              <p className="text-gray-600">See Sunny's AI in action</p>
+              <p className="text-gray-600">Explore a guided practice set.</p>
             </motion.div>
 
             <motion.div
@@ -158,7 +158,7 @@ export default function LandingPage() {
             >
               <div className="text-4xl mb-3">💬</div>
               <h3 className="text-xl font-bold mb-2">Start Chat</h3>
-              <p className="text-gray-600">Talk with Sunny directly</p>
+              <p className="text-gray-600">Jump into a conversation with Sunny.</p>
             </motion.div>
           </div>
 
@@ -237,7 +237,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-                Practice math and reading with questions that adapt to your child's level.
+                Practice math and reading with playful, adaptive activities designed with educators and families.
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -293,7 +293,7 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl lg:text-5xl font-black mb-4">How It Works</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Simple learning that adapts to your child
+              Built with teacher feedback so every activity has a purpose.
             </p>
           </motion.div>
 
