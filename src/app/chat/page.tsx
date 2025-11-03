@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { ChatHeader } from './components/ChatHeader';
 import { EmotionSelector, type Emotion } from './components/EmotionSelector';
 import { ChatMessages, type Message } from './components/ChatMessages';
+import type { GeneratedGame } from '@/lib/chat/game-generator';
 import { QuickActions } from './components/QuickActions';
 import { ChatInput } from './components/ChatInput';
 import { MobileStats } from './components/MobileStats';
@@ -230,17 +231,26 @@ function ChatPageContent() {
 
       if (!response.ok) throw new Error('Failed to get response');
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        kind?: 'text' | 'game';
+        message?: string;
+        content?: string;
+        game?: GeneratedGame;
+      };
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.message || data.content || "I'm here to help!",
         timestamp: new Date(),
+        game: data.game,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-      saveChatMessage('assistant', assistantMessage.content);
+      const messageType = data.kind === 'game' ? 'game' : 'chat';
+      saveChatMessage('assistant', assistantMessage.content, messageType, data.kind === 'game'
+        ? { gameId: data.game?.id, topic: data.game?.topic, difficulty: data.game?.difficulty }
+        : undefined);
 
       // Update XP
       const newXP = xp + 10;

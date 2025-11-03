@@ -15,7 +15,12 @@ export async function loadChatMessages(limit = 50) {
   }
 }
 
-export async function saveChatMessage(role: PersistedRole, content: string, messageType: 'chat' | 'challenge' | 'feedback' = 'chat', metadata?: any) {
+export async function saveChatMessage(
+  role: PersistedRole,
+  content: string,
+  messageType: 'chat' | 'challenge' | 'feedback' | 'game' = 'chat',
+  metadata?: any
+) {
   const u = getCurrentUser()
   if (!u) return false
   try {
