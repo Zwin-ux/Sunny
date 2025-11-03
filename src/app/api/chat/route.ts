@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOpenAIService } from '@/lib/openai'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import { createSunnyResponse } from '@/lib/chat/orchestrator'
 
 export const runtime = 'nodejs'
 
@@ -26,14 +26,10 @@ export async function POST(req: NextRequest) {
       content: String(m.content || '').slice(0, 2000),
     }))
 
-    // Prepend a small system prompt for Sunny tone
-    const system = { role: 'system', content: `You are Sunny, a cheerful, concise AI tutor for kids. Keep answers brief (2-3 sentences), friendly, and age-appropriate. Current emotion: ${emotion || 'neutral'}.` }
-
-    const svc = getOpenAIService()
-    const text = await svc.generateChatCompletion([system, ...sanitized])
-    return NextResponse.json({ message: text || 'I\'m here to help!' })
+    const response = await createSunnyResponse({ messages: sanitized, emotion })
+    return NextResponse.json(response)
   } catch (e: any) {
     logger.error('Chat route error', e)
-    return NextResponse.json({ message: 'I\'m having trouble right now, but I\'m here to help!' }, { status: 200 })
+    return NextResponse.json({ kind: 'text', message: 'I\'m having trouble right now, but I\'m here to help!' }, { status: 200 })
   }
 }
