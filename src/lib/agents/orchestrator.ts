@@ -54,7 +54,7 @@ export class LearningOrchestrator extends EventEmitter {
 
         try {
             // Start all registered agents
-            for (const [agentType, agent] of this.agents.entries()) {
+            for (const [agentType, agent] of Array.from(this.agents.entries())) {
                 await agent.start();
                 console.log(`Started agent: ${agentType}`);
             }
@@ -75,7 +75,7 @@ export class LearningOrchestrator extends EventEmitter {
 
         try {
             // Stop all agents
-            for (const [agentType, agent] of this.agents.entries()) {
+            for (const [agentType, agent] of Array.from(this.agents.entries())) {
                 await agent.stop();
                 console.log(`Stopped agent: ${agentType}`);
             }
@@ -433,7 +433,7 @@ export class LearningOrchestrator extends EventEmitter {
         });
 
         const decisions: Decision[] = [];
-        for (const [key, recs] of grouped.entries()) {
+        for (const [key, recs] of Array.from(grouped.entries())) {
             if (recs.length >= 2) { // Consensus threshold
                 const avgConfidence = recs.reduce((sum, r) => sum + r.confidence, 0) / recs.length;
                 decisions.push({
@@ -541,7 +541,7 @@ export class LearningOrchestrator extends EventEmitter {
     // Health and monitoring
     getSystemHealth(): SystemHealth {
         const agentHealth = new Map<AgentType, boolean>();
-        for (const [type, agent] of this.agents.entries()) {
+        for (const [type, agent] of Array.from(this.agents.entries())) {
             agentHealth.set(type, agent.getHealthStatus().healthy);
         }
 

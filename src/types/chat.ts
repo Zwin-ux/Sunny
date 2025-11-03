@@ -1,4 +1,4 @@
-import { Lesson, LearningProgress, StudentProgress, ContentType } from './lesson';
+// Removed circular dependency - these types are not actually used in this file
 
 // Define MessageType separately to avoid circular dependencies
 export type MessageType =

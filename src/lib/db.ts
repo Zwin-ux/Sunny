@@ -7,13 +7,24 @@
 
 import { UserProfile } from '@/types/user';
 import { LearningStyle } from '@/types/chat';
-import fs from 'fs/promises';
-import path from 'path';
+// Conditional imports for server-side only
+let fs: any = null;
+let path: any = null;
+
+// Only import fs and path on server-side
+if (typeof window === 'undefined') {
+  try {
+    fs = require('fs/promises');
+    path = require('path');
+  } catch (error) {
+    console.warn('fs/promises not available');
+  }
+}
 import { getAdminClient, isAdminClientAvailable } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 import type { Database } from '@/types/supabase';
 
-const DB_FILE = path.resolve(process.cwd(), 'src/data/db/users.json');
+const DB_FILE = typeof window === 'undefined' && path ? path.resolve(process.cwd(), 'src/data/db/users.json') : '';
 
 // Type alias for database user row
 type DatabaseUser = Database['public']['Tables']['users']['Row'];
@@ -62,6 +73,10 @@ function databaseToUserProfile(dbUser: DatabaseUser): UserProfile {
 // ============================================================================
 
 async function getUsersFromFile(): Promise<UserProfile[]> {
+  if (typeof window !== 'undefined' || !fs) {
+    return []; // Return empty array on client-side
+  }
+  
   try {
     const data = await fs.readFile(DB_FILE, 'utf-8');
     return JSON.parse(data);
@@ -76,6 +91,10 @@ async function getUsersFromFile(): Promise<UserProfile[]> {
 }
 
 async function saveUsersToFile(users: UserProfile[]): Promise<void> {
+  if (typeof window !== 'undefined' || !fs || !path) {
+    return; // Skip on client-side
+  }
+  
   try {
     // Ensure directory exists
     const dir = path.dirname(DB_FILE);
