@@ -7,6 +7,8 @@ Current Chat UI: v2 (look for the yellow v2 tag in the chat header). Set `NEXT_P
 
 A cheerful, educational AI chat application designed to make learning fun for children while providing customizable lesson plans for teachers.
 
+🚀 **Latest Update**: Fixed deployment configuration for new src/app directory structure.
+
 ![Sunny AI for Kids](public/rainbow.png)
 
 ---

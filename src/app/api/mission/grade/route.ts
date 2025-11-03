@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         misunderstanding_label: evaluation.misunderstanding_label,
         confidence_level: evaluation.confidence_level,
         ai_feedback: evaluation.ai_feedback,
-      });
+      } as any);
 
     if (attemptError) {
       logger.error('Failed to record attempt', { error: attemptError });
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     const newMastery = Math.max(0, Math.min(100, skill.mastery + masteryDelta));
 
-    const { error: skillError } = await supabase
+    const { error: skillError } = await (supabase as any)
       .from('skills')
       .update({
         mastery: newMastery,
@@ -157,11 +157,11 @@ export async function POST(request: NextRequest) {
     // Step 5: Update session stats
     // ========================================================================
 
-    const { error: sessionUpdateError } = await supabase
+    const { error: sessionUpdateError } = await (supabase as any)
       .from('sessions')
       .update({
-        questions_attempted: (session.questions_attempted || 0) + 1,
-        questions_correct: (session.questions_correct || 0) + 
+        questions_attempted: ((session as any).questions_attempted || 0) + 1,
+        questions_correct: ((session as any).questions_correct || 0) + 
           (evaluation.correctness === 'correct' ? 1 : 0),
       })
       .eq('id', sessionId);

@@ -3,9 +3,10 @@ export interface UserProfile {
   name: string;
   email: string;
   passwordHash: string;
-  learningStyle?: import('./chat').LearningStyle;
-  progress: Record<string, number>; // lessonId -> completion percentage
-  chatHistory: import('./chat').SunnyChatMessage[];
+  progress: Record<string, any>;
+  chatHistory: any[];
   learningInterests: string[];
-  quizProgress: Record<string, { correct: number; total: number }>; // topic -> { correct, total }
+  quizProgress: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
 }

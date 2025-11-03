@@ -40,7 +40,5 @@ export async function POST(request: NextRequest) {
 }
 
 // Rate limiting: 100 requests per user per hour
-export const config = {
-  runtime: 'nodejs',
-  maxDuration: 30,
-};
+export const runtime = 'nodejs';
+export const maxDuration = 30;
