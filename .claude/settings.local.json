@@ -26,7 +26,9 @@
       "Bash(cmd /c \"ren app app-old-backup\")",
       "Bash(curl:*)",
       "Bash(taskkill:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(/tmp/sunny-ai-part1.txt)",
+      "Bash(/tmp/sunny-ai-part2.txt)"
     ],
     "deny": [],
     "ask": []

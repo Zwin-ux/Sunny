@@ -2,17 +2,18 @@
 
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
-import { 
-  Calculator, 
-  Beaker, 
-  BookOpen, 
-  Palette, 
-  Music, 
-  Globe, 
-  Code, 
+import {
+  Calculator,
+  Beaker,
+  BookOpen,
+  Palette,
+  Music,
+  Globe,
+  Code,
   Theater,
   Lock,
-  Sparkles
+  Sparkles,
+  Wrench
 } from 'lucide-react';
 
 interface LearningApp {
@@ -101,6 +102,14 @@ const LEARNING_APPS: LearningApp[] = [
     unlocked: false,
     requiredXP: 350,
     description: 'Write and perform creative stories',
+  },
+  {
+    id: 'stage-creator',
+    name: 'Stage Creator',
+    icon: Wrench,
+    color: 'from-violet-500 to-fuchsia-500',
+    unlocked: true,
+    description: 'Design custom emotional learning stages',
   },
 ];
 

@@ -21,14 +21,13 @@ export class GameAgent extends BaseAgent {
       const gameRecommendation = await this.recommendGame(context);
       
       return {
-        agentId: this.id,
         agentType: this.type,
         timestamp: Date.now(),
         confidence: 0.85,
         priority: 'high',
         recommendations: [
           {
-            type: 'activity',
+            type: 'action',
             description: `Start ${gameRecommendation.gameType} game on ${gameRecommendation.topic}`,
             priority: 'high',
             confidence: 0.85,
@@ -52,7 +51,6 @@ export class GameAgent extends BaseAgent {
     }
     
     return {
-      agentId: this.id,
       agentType: this.type,
       timestamp: Date.now(),
       confidence: 0.3,
@@ -261,7 +259,6 @@ export class GameAgent extends BaseAgent {
     }
     
     return {
-      agentId: this.id,
       agentType: this.type,
       timestamp: Date.now(),
       confidence: 0.85,

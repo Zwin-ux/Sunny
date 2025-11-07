@@ -16,10 +16,8 @@ import { isDemoMode } from './runtimeMode';
 // Lazy-load agent manager to avoid initialization errors
 async function getAgentManager() {
   try {
-    // Temporarily disabled to fix build issues
-    // const { globalAgentManager } = await import('./agents');
-    // return globalAgentManager;
-    return null;
+    const { globalAgentManager } = await import('./agents');
+    return globalAgentManager;
   } catch (error) {
     console.error('Agent system not available:', error);
     return null;

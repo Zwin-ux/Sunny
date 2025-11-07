@@ -1,0 +1,642 @@
+openapi: 3.0.3
+info:
+  title: Sunny AI - Multi-Agent Learning System API
+  description: |
+    Sunny AI's Multi-Agent Cognitive Learning Network provides intelligent, adaptive educational experiences
+    for children aged 6-10. This API exposes the capabilities of 8+ specialized AI agents working in concert
+    to assess, teach, adapt, and support young learners.
+
+    ## Agent Types
+    - **Assessment Agent**: Analyzes student performance and identifies knowledge gaps
+    - **Path Planner Agent**: Creates adaptive learning paths with prerequisite chains
+    - **Content Generation Agent**: Produces personalized lessons, quizzes, and activities
+    - **Intervention Agent**: Detects and responds to frustration, confusion, and disengagement
+    - **Communication Agent**: Adapts tone, language, and style for emotional intelligence
+    - **Reflection Agent**: Generates session summaries and metacognitive prompts
+    - **Collaboration Agent**: Facilitates peer learning and social experiences
+    - **Game Agent**: Recommends educational games based on engagement and mastery
+
+    ## Architecture Principles
+    - **Perception**: Agents perceive student state through interactions and assessments
+    - **Cognition**: Orchestrator coordinates agents to make intelligent decisions
+    - **Action**: Agents generate recommendations (content, interventions, strategies)
+    - **Memory**: Learning states persist across sessions with Bayesian Knowledge Tracing
+
+    ## Performance Targets
+    - P95 latency < 400ms for tutor actions
+    - Privacy by design (COPPA compliant)
+    - Transparent reasoning (all decisions explainable)
+
+  version: 1.0.0
+  contact:
+    name: Sunny AI Team
+    url: https://github.com/your-repo/sunny
+
+servers:
+  - url: https://api.sunny.ai/v1
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Assessment
+    description: Real-time student assessment and knowledge gap detection
+  - name: Learning Paths
+    description: Adaptive learning path generation and management
+  - name: Interventions
+    description: Behavioral interventions and support
+  - name: Learning Graph
+    description: Knowledge graph queries and mastery tracking
+  - name: Reflection
+    description: Session summaries and metacognitive support
+  - name: Content
+    description: Personalized content generation
+
+paths:
+  /agents/assess:
+    post:
+      tags: [Assessment]
+      summary: Assess student interaction
+      description: |
+        Analyzes a student interaction in real-time and provides assessment metrics including:
+        - Understanding level (0-1)
+        - Engagement score (0-1)
+        - Confidence estimate (0-1)
+        - Knowledge gaps identified
+        - Difficulty adjustment recommendations
+
+        Uses Assessment Agent with Bayesian Knowledge Tracing.
+
+      operationId: assessInteraction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessmentRequest'
+            examples:
+              question_answer:
+                summary: Question-answer assessment
+                value:
+                  student_id: "student-123"
+                  interaction:
+                    type: "question_answer"
+                    content: "What is 7 + 5?"
+                    response_time_ms: 3500
+                    confidence_self_reported: 4
+                  current_topic: "addition"
+
+      responses:
+        '200':
+          description: Assessment completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+      x-code-samples:
+        - lang: 'TypeScript'
+          source: |
+            const response = await fetch('/api/agents/assess', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                student_id: 'student-123',
+                interaction: {
+                  type: 'question_answer',
+                  content: 'Student answered: 12',
+                  response_time_ms: 3500,
+                  confidence_self_reported: 4
+                },
+                current_topic: 'addition'
+              })
+            });
+            const data = await response.json();
+            console.log('Assessment:', data.assessment.metrics);
+
+  /agents/plan:
+    post:
+      tags: [Learning Paths]
+      summary: Generate learning plan
+      description: |
+        Generates or updates an adaptive learning plan for a student based on:
+        - Learning goal
+        - Current knowledge state
+        - Available time
+        - Preferred difficulty
+        - Prerequisite chain analysis
+
+        Uses Path Planner Agent with Learning Graph traversal.
+
+      operationId: generateLearningPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanRequest'
+            examples:
+              math_goal:
+                summary: Multiplication mastery plan
+                value:
+                  student_id: "student-123"
+                  learning_goal: "Master multiplication tables 1-10"
+                  current_knowledge: ["addition", "subtraction", "skip_counting"]
+                  time_available_minutes: 30
+                  preferred_difficulty: "medium"
+
+      responses:
+        '200':
+          description: Learning plan generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/intervene:
+    post:
+      tags: [Interventions]
+      summary: Trigger intervention
+      description: |
+        Detects and responds to behavioral triggers:
+        - **Frustration**: Offers encouragement, simplifies difficulty, suggests break
+        - **Disengagement**: Changes activity type, adds gamification
+        - **Confusion**: Provides clarification, concrete examples
+        - **Fatigue**: Suggests break, ends session gracefully
+        - **Success**: Celebrates, offers harder challenges
+
+        Uses Intervention Agent with cooldown periods (5 min between interventions).
+
+      operationId: triggerIntervention
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterventionRequest'
+            examples:
+              frustration_detected:
+                summary: Student showing frustration
+                value:
+                  student_id: "student-123"
+                  trigger: "frustration"
+                  context:
+                    recent_performance:
+                      - { correct: false, time_spent_ms: 45000 }
+                      - { correct: false, time_spent_ms: 60000 }
+                      - { correct: false, time_spent_ms: 38000 }
+                    session_duration_minutes: 18
+                    current_activity: "two_digit_subtraction"
+
+      responses:
+        '200':
+          description: Intervention triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterventionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Student learning state not found
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/graph/{student_id}:
+    get:
+      tags: [Learning Graph]
+      summary: Get student learning graph
+      description: |
+        Retrieves student's learning graph snapshot including:
+        - All concept nodes with mastery levels
+        - Graph edges (prerequisites, reinforces, etc.)
+        - Recommended next learning nodes
+        - Concepts due for spaced repetition review
+
+        Uses Learning Graph schema with Bayesian Knowledge Tracing for mastery probabilities.
+
+      operationId: getlearningGraph
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique student identifier
+
+      responses:
+        '200':
+          description: Learning graph retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningGraphResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/reflect:
+    post:
+      tags: [Reflection]
+      summary: Generate reflection/summary
+      description: |
+        Generates metacognitive reflections:
+        - **session_summary**: Post-session insights and achievements
+        - **progress_narrative**: Story-format learning journey (week/month/all-time)
+        - **self_evaluation**: Prompts for student self-assessment
+
+        Uses Reflection Agent with growth mindset framing.
+
+      operationId: generateReflection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReflectionRequest'
+            examples:
+              session_summary:
+                summary: Post-session summary
+                value:
+                  student_id: "student-123"
+                  session_id: "session-456"
+                  reflection_type: "session_summary"
+
+      responses:
+        '200':
+          description: Reflection generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReflectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Session not found
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    AssessmentRequest:
+      type: object
+      required: [student_id, interaction]
+      properties:
+        student_id:
+          type: string
+          description: Unique student identifier
+          example: "student-123"
+        interaction:
+          type: object
+          required: [type, content]
+          properties:
+            type:
+              type: string
+              enum: [question_answer, activity, challenge]
+              description: Type of interaction being assessed
+            content:
+              type: string
+              description: Interaction content or student response
+              example: "12"
+            response_time_ms:
+              type: integer
+              description: Time taken to respond in milliseconds
+              example: 3500
+            confidence_self_reported:
+              type: integer
+              minimum: 1
+              maximum: 5
+              description: Student's self-reported confidence (1-5)
+            context:
+              type: object
+              additionalProperties: true
+              description: Additional context data
+        current_topic:
+          type: string
+          description: Current learning topic
+          example: "addition"
+
+    AssessmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        assessment:
+          type: object
+          properties:
+            interaction_id:
+              type: string
+            timestamp:
+              type: integer
+            metrics:
+              type: object
+              properties:
+                understanding:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: Estimated understanding level
+                engagement:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: Engagement score
+                confidence:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  description: Confidence estimate
+                knowledge_gaps:
+                  type: array
+                  items:
+                    type: string
+                  description: Identified knowledge gaps
+            recommendations:
+              type: array
+              items:
+                type: string
+              description: Recommended actions
+
+    PlanRequest:
+      type: object
+      required: [student_id, learning_goal]
+      properties:
+        student_id:
+          type: string
+        learning_goal:
+          type: string
+          description: Target learning objective
+          example: "Master multiplication tables 1-10"
+        current_knowledge:
+          type: array
+          items:
+            type: string
+          description: Concepts student already knows
+        time_available_minutes:
+          type: integer
+          minimum: 5
+          maximum: 120
+          example: 30
+        preferred_difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          default: medium
+
+    PlanResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        plan:
+          type: object
+          properties:
+            learning_goal:
+              type: string
+            estimated_duration_minutes:
+              type: integer
+            difficulty:
+              type: string
+              enum: [easy, medium, hard]
+            path:
+              type: array
+              items:
+                type: object
+                properties:
+                  step:
+                    type: integer
+                  topic:
+                    type: string
+                  duration:
+                    type: integer
+            prerequisites:
+              type: array
+              items:
+                type: string
+            next_steps:
+              type: array
+              items:
+                type: string
+
+    InterventionRequest:
+      type: object
+      required: [student_id, trigger]
+      properties:
+        student_id:
+          type: string
+        trigger:
+          type: string
+          enum: [frustration, disengagement, confusion, fatigue, success, auto_detect]
+        context:
+          type: object
+          properties:
+            recent_performance:
+              type: array
+              items:
+                type: object
+                properties:
+                  correct:
+                    type: boolean
+                  time_spent_ms:
+                    type: integer
+            session_duration_minutes:
+              type: integer
+            current_activity:
+              type: string
+
+    InterventionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        intervention:
+          type: object
+          properties:
+            trigger:
+              type: string
+            timestamp:
+              type: integer
+            action_taken:
+              type: string
+              description: Human-readable description of intervention
+            recommendations:
+              type: array
+              items:
+                type: string
+            priority:
+              type: string
+              enum: [low, medium, high, urgent]
+
+    LearningGraphResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        student_id:
+          type: string
+        graph:
+          type: object
+          properties:
+            nodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/GraphNode'
+            mastery:
+              type: array
+              items:
+                $ref: '#/components/schemas/MasteryRecord'
+            recommended_next:
+              type: array
+              items:
+                type: string
+                description: Node IDs recommended next
+            concepts_due_for_review:
+              type: array
+              items:
+                type: string
+                description: Node IDs due for spaced repetition
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+        node_type:
+          type: string
+          enum: [concept, skill, activity, assessment, intervention, evidence]
+        label:
+          type: string
+        description:
+          type: string
+        subject:
+          type: string
+        grade_level:
+          type: integer
+        bloom_level:
+          type: string
+          enum: [remember, understand, apply, analyze, evaluate, create]
+
+    MasteryRecord:
+      type: object
+      properties:
+        node_id:
+          type: string
+        mastery_level:
+          type: string
+          enum: [unknown, introduced, developing, proficient, mastered, expert]
+        mastery_probability:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Bayesian probability of mastery
+        total_attempts:
+          type: integer
+        successful_attempts:
+          type: integer
+        accuracy:
+          type: number
+        last_seen_at:
+          type: string
+          format: date-time
+        next_review_at:
+          type: string
+          format: date-time
+
+    ReflectionRequest:
+      type: object
+      required: [student_id, session_id, reflection_type]
+      properties:
+        student_id:
+          type: string
+        session_id:
+          type: string
+        reflection_type:
+          type: string
+          enum: [session_summary, progress_narrative, self_evaluation]
+        timeframe:
+          type: string
+          enum: [session, week, month]
+          default: session
+
+    ReflectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        reflection:
+          type: object
+          properties:
+            student_id:
+              type: string
+            session_id:
+              type: string
+            type:
+              type: string
+            timestamp:
+              type: integer
+            content:
+              type: object
+              description: Reflection content (varies by type)
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Missing required fields"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Rate limit exceeded"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: string
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+security:
+  - ApiKeyAuth: []
