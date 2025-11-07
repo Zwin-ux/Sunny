@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 
-export function DemoWaitlistCTA() {
+interface DemoWaitlistCTAProps {
+  playgroundCompleted?: boolean;
+}
+
+export function DemoWaitlistCTA({ playgroundCompleted = false }: DemoWaitlistCTAProps = {}) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -109,6 +113,20 @@ export function DemoWaitlistCTA() {
               Imagine this every day for your child...
             </p>
           </Card>
+
+          {/* Cloud Garden Completion Badge */}
+          {playgroundCompleted && (
+            <Card className="p-4 bg-gradient-to-r from-green-50 to-cyan-50 border-2 border-green-300 mb-6">
+              <div className="flex items-center justify-center gap-3">
+                <div className="text-3xl">✅</div>
+                <div className="text-left">
+                  <p className="font-bold text-green-800">Cloud Garden Complete!</p>
+                  <p className="text-sm text-green-700">You experienced both sides of Sunny: academic learning AND emotional wellness!</p>
+                </div>
+                <div className="text-3xl">🌤️</div>
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Features */}

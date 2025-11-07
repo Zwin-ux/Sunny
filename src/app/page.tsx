@@ -121,7 +121,7 @@ export default function LandingPage() {
           </motion.div>
 
           {/* Action Cards */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -141,6 +141,19 @@ export default function LandingPage() {
               transition={{ delay: 0.2 }}
               whileHover={{ y: -5 }}
               className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
+              onClick={() => router.push('/playground')}
+            >
+              <div className="text-4xl mb-3">🌈</div>
+              <h3 className="text-xl font-bold mb-2">Learning Playground</h3>
+              <p className="text-gray-600">Explore emotional learning worlds!</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              whileHover={{ y: -5 }}
+              className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
               onClick={() => router.push('/demo')}
             >
               <div className="text-4xl mb-3">✨</div>
@@ -151,7 +164,7 @@ export default function LandingPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.4 }}
               whileHover={{ y: -5 }}
               className="bg-white p-6 rounded-2xl border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer"
               onClick={() => router.push('/chat')}

@@ -23,9 +23,10 @@ import {
 interface DemoResultsProps {
   answers: Answer[];
   onContinue: () => void;
+  onPlayground?: () => void;
 }
 
-export function DemoResults({ answers, onContinue }: DemoResultsProps) {
+export function DemoResults({ answers, onContinue, onPlayground }: DemoResultsProps) {
   const totalTime = answers.reduce((sum, a) => sum + a.timeSpent, 0);
   const insights = analyzePerformance(answers, totalTime);
   const analysisMessage = generateAnalysisMessage(insights);
@@ -194,6 +195,41 @@ export function DemoResults({ answers, onContinue }: DemoResultsProps) {
             <SunnyVoice text={analysisMessage} autoPlay={false} />
           </div>
         </Card>
+
+        {/* Cloud Garden CTA */}
+        {onPlayground && (
+          <Card className="p-6 mb-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200">
+            <div className="text-center">
+              <div className="text-6xl mb-3">🌤️</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                Ready for More?
+              </h2>
+              <p className="text-gray-700 mb-4 max-w-lg mx-auto leading-relaxed">
+                Try Sunny's <strong>Cloud Garden</strong> - a calming 10-minute activity where you'll learn to sort your thoughts and grow your self-care garden!
+              </p>
+              <div className="space-y-3">
+                <Button
+                  onClick={onPlayground}
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-lg px-8 py-6 font-semibold shadow-lg"
+                >
+                  Continue to Cloud Garden 🌤️
+                </Button>
+                <Button
+                  onClick={onContinue}
+                  variant="outline"
+                  size="lg"
+                  className="w-full text-lg px-8 py-4"
+                >
+                  Skip to Waitlist
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                🎯 Anxiety management • 🌱 Self-care skills • ⏱️ ~10 minutes
+              </p>
+            </div>
+          </Card>
+        )}
 
         {/* CTA */}
         <div className="text-center space-y-4">

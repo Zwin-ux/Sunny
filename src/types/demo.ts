@@ -9,7 +9,7 @@ export type EnglishTopic = 'vocabulary' | 'grammar' | 'reading' | 'writing';
 export type LogicTopic = 'patterns' | 'sequences' | 'logic' | 'programming';
 export type LearningTopic = MathTopic | EnglishTopic | LogicTopic;
 
-export type DemoStep = 'welcome' | 'check' | 'mission' | 'results' | 'waitlist';
+export type DemoStep = 'welcome' | 'check' | 'mission' | 'results' | 'playground' | 'waitlist';
 
 export interface Question {
   id: string;

@@ -25,3 +25,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Avoid Windows device name collision
+/nul
+/NUL
+**/nul
+**/NUL

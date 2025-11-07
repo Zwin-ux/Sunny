@@ -6,12 +6,15 @@ import { DemoQuickCheck } from '@/components/demo/DemoQuickCheck';
 import { DemoMission } from '@/components/demo/DemoMission';
 import { DemoResults } from '@/components/demo/DemoResults';
 import { DemoWaitlistCTA } from '@/components/demo/DemoWaitlistCTA';
+import { CloudGardenStage } from '@/components/stages/CloudGardenStage';
 import { DemoStep, DifficultyLevel, Answer } from '@/types/demo';
 
 export default function DemoPage() {
   const [step, setStep] = useState<DemoStep>('welcome');
   const [level, setLevel] = useState<DifficultyLevel>('easy');
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [playerId] = useState(() => `demo_${Date.now()}`);
+  const [playgroundCompleted, setPlaygroundCompleted] = useState(false);
 
   const handleQuickCheckComplete = (determinedLevel: DifficultyLevel) => {
     setLevel(determinedLevel);
@@ -41,14 +44,25 @@ export default function DemoPage() {
       )}
 
       {step === 'results' && (
-        <DemoResults 
+        <DemoResults
           answers={answers}
           onContinue={() => setStep('waitlist')}
+          onPlayground={() => setStep('playground')}
+        />
+      )}
+
+      {step === 'playground' && (
+        <CloudGardenStage
+          playerId={playerId}
+          onComplete={() => {
+            setPlaygroundCompleted(true);
+            setStep('waitlist');
+          }}
         />
       )}
 
       {step === 'waitlist' && (
-        <DemoWaitlistCTA />
+        <DemoWaitlistCTA playgroundCompleted={playgroundCompleted} />
       )}
     </>
   );
