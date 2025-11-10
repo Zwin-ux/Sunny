@@ -2,11 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, BookOpen, Brain, Trophy, Users, Zap, Star, ArrowRight, LogOut } from 'lucide-react';
+import { Sparkles, BookOpen, Brain, Users, ArrowRight, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { getCurrentUser, logout } from '@/lib/auth';
+import { AnimatedAgentDemo } from '@/components/demo/AnimatedAgentDemo';
 
 const features = [
   {
@@ -220,7 +221,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-blue-50 to-purple-50">
       {/* Hero Section */}
       <section className="relative overflow-hidden px-6 pt-20 pb-32">
-
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Text content */}
@@ -237,7 +237,7 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 bg-yellow-200 px-4 py-2 rounded-full mb-6 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
                 <Sparkles className="w-4 h-4" />
-                <span className="font-bold text-sm">Learning Platform for Kids</span>
+                <span className="font-bold text-sm">AI Teaching Companion</span>
               </motion.div>
 
               <h1 className="text-5xl lg:text-7xl font-black mb-6 leading-tight">
@@ -249,9 +249,20 @@ export default function LandingPage() {
                 Learning Made Simple
               </h1>
 
-              <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-                Practice math and reading with playful, adaptive activities designed with educators and families.
+              <p className="text-xl text-gray-700 mb-6 leading-relaxed">
+                An AI teaching companion powered by independent LLM agents that adapt to each child's learning style in real-time.
               </p>
+
+              {/* LLM Choice Highlight */}
+              <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">🔧</div>
+                  <div>
+                    <p className="font-black text-gray-900 text-sm">Your Choice of AI</p>
+                    <p className="text-xs text-gray-600">Use OpenAI, Anthropic, or your preferred LLM provider</p>
+                  </div>
+                </div>
+              </div>
 
               <div className="flex flex-wrap gap-4">
                 <Button
@@ -268,7 +279,6 @@ export default function LandingPage() {
                   Try Demo
                 </Button>
               </div>
-
             </motion.div>
 
             {/* Right side - Animated Sunny character */}
@@ -290,6 +300,128 @@ export default function LandingPage() {
                   <Image src="/sun.png" alt="Sunny" width={300} height={300} />
                 </div>
               </motion.div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Business Model Section */}
+      <section className="px-6 py-16 bg-white border-y-2 border-black">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <h2 className="text-3xl lg:text-4xl font-black mb-6">Built for Homeschool Families & School Districts</h2>
+            <div className="grid md:grid-cols-3 gap-8 text-left">
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="text-3xl mb-3">🏠</div>
+                <h3 className="font-black text-lg mb-2">Homeschool Families</h3>
+                <p className="text-gray-700 text-sm mb-3">
+                  Start with our free version, upgrade to premium for advanced features and multi-child support.
+                </p>
+                <p className="text-xs text-gray-600 font-semibold">Free tier available</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="text-3xl mb-3">🏫</div>
+                <h3 className="font-black text-lg mb-2">School Districts</h3>
+                <p className="text-gray-700 text-sm mb-3">
+                  Classroom licenses with teacher dashboards, analytics, and content control for entire schools.
+                </p>
+                <p className="text-xs text-gray-600 font-semibold">Per-seat licensing</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-50 to-teal-50 p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="text-3xl mb-3">🧪</div>
+                <h3 className="font-black text-lg mb-2">Pilot Programs</h3>
+                <p className="text-gray-700 text-sm mb-3">
+                  Partner with us to test Sunny in your classroom or district with dedicated support.
+                </p>
+                <p className="text-xs text-gray-600 font-semibold">Custom pricing</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Demo Section - See Sunny in Action */}
+      <section className="px-6 py-20 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl lg:text-5xl font-black mb-4">See Sunny in Action</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Watch how our 5 AI agents work together to create personalized learning experiences
+            </p>
+          </motion.div>
+
+          {/* Animated Demo Simulation */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="mb-8"
+          >
+            <AnimatedAgentDemo />
+          </motion.div>
+
+          {/* Try Full Demo Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <Button
+              onClick={handleTryDemo}
+              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-8 py-4 text-lg font-bold rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-all"
+            >
+              Try Full Interactive Demo
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </motion.div>
+            
+          {/* Demo Features */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <div className="text-3xl mb-2">⚡</div>
+              <h4 className="font-bold mb-1">Real-Time Adaptation</h4>
+              <p className="text-sm text-gray-600">Adjusts difficulty and content based on student responses</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <div className="text-3xl mb-2">📊</div>
+              <h4 className="font-bold mb-1">Progress Tracking</h4>
+              <p className="text-sm text-gray-600">Visual insights into knowledge gaps and mastery levels</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="bg-white p-6 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <div className="text-3xl mb-2">🎨</div>
+              <h4 className="font-bold mb-1">Personalized Content</h4>
+              <p className="text-sm text-gray-600">AI-generated lessons tailored to each child's interests</p>
             </motion.div>
           </div>
         </div>

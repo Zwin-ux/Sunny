@@ -8,6 +8,7 @@ import { LearningAppsLauncher } from '@/components/demo/LearningAppsLauncher';
 import { motion } from 'framer-motion';
 import { LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useComingSoon } from '@/components/ui/ComingSoonModal';
 import { useXP } from '@/contexts/XPContext';
 import { useRouter } from 'next/navigation';
 
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { showComingSoon, ComingSoonModal } = useComingSoon();
 
   // Use real XP data from XPContext
   const { xp, level, streak, totalMissions } = useXP();
@@ -81,7 +83,16 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-gray-700 font-semibold">{user?.name || 'Student'}</span>
-            <Button variant="outline" size="sm" className="border-2 border-black">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-2 border-black"
+              onClick={() => showComingSoon(
+                'Settings',
+                'Customize your learning preferences, notification settings, and account details.',
+                'Coming in Q1 2025'
+              )}
+            >
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
@@ -192,10 +203,16 @@ export default function DashboardPage() {
               } 
               // Apps in development
               else {
-                alert(`🚧 ${appId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} is coming soon! We're working hard to bring you this learning experience. 🎉`);
+                const appName = appId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                showComingSoon(
+                  appName,
+                  `${appName} is in active development. This learning experience will include interactive lessons, practice activities, and progress tracking.`,
+                  'Coming Soon'
+                );
               }
             }}
           />
+          <ComingSoonModal />
         </motion.div>
 
         {/* Main Content Grid */}
