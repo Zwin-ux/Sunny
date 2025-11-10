@@ -2,6 +2,7 @@
 import { LearningOrchestrator } from './orchestrator';
 import { BaseAgent, AgentFactory } from './base-agent';
 import { globalEventSystem } from './event-system';
+import { PathPlanningAgent } from './path-planning-agent';
 import { 
   AgentType, 
   EnhancedStudentProfile, 
@@ -198,11 +199,16 @@ export class AgentManager {
   }
 
   private registerPlaceholderAgents(): void {
-    // Register placeholder agents that will be implemented in subsequent tasks
+    // Register real agents that have been implemented
+    if (this.config.enabledAgents.includes('pathPlanning')) {
+      const pathPlanningAgent = new PathPlanningAgent();
+      this.orchestrator.registerAgent(pathPlanningAgent);
+    }
+
+    // Register placeholder agents for those not yet implemented
     const placeholderAgents: AgentType[] = [
       'assessment',
       'contentGeneration', 
-      'pathPlanning',
       'intervention',
       'communication'
     ];

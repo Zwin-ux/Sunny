@@ -17,6 +17,10 @@ import { QuickActions } from './components/QuickActions';
 import { ChatInput } from './components/ChatInput';
 import { MobileStats } from './components/MobileStats';
 
+// Agent integration components
+import { AgenticChatInterface } from './components/AgenticChatInterface';
+import { StudentProfile } from '@/types/chat';
+
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v2';
 
 function ChatPageContent() {
@@ -35,6 +39,8 @@ function ChatPageContent() {
   const [messagesCount, setMessagesCount] = useState(0);
   const [showTyping, setShowTyping] = useState(false);
   const [inlineQuizzes, setInlineQuizzes] = useState<any[]>([]);
+  const [useAgenticSystem, setUseAgenticSystem] = useState(true); // Toggle for agent system
+  const [agentActions, setAgentActions] = useState<string[]>([]);
 
   // Initialize user and load chat history
   useEffect(() => {
@@ -356,6 +362,27 @@ function ChatPageContent() {
 
       {/* Main Chat Area */}
       <div className="flex-1 overflow-hidden flex flex-col max-w-6xl w-full mx-auto px-4 md:px-6 py-6">
+        {/* Agent Integration Interface */}
+        {useAgenticSystem && user && (
+          <AgenticChatInterface
+            studentId={user.id || user.name || 'default'}
+            studentProfile={{
+              name: user.name || 'Student',
+              level: user.level || 1,
+              points: xp,
+              completedLessons: [],
+              emotion: selectedEmotion || 'neutral',
+              learningStyle: user.learningStyle || 'visual',
+              difficulty: user.difficulty || 'medium',
+            } as StudentProfile}
+            onAgentResponse={(response, actions) => {
+              setAgentActions(actions);
+            }}
+            showProgress={true}
+            className="mb-4"
+          />
+        )}
+
         {/* Emotion Selector */}
         <EmotionSelector
           selectedEmotion={selectedEmotion}

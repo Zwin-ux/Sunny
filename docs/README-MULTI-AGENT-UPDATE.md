@@ -655,7 +655,3 @@ MIT License - See LICENSE file for details
 - **OpenAI**: GPT-4 Turbo API
 
 ---
-
-**Built with ❤️ by the Sunny AI Team**
-
-*Empowering every child to learn at their own pace, in their own way.*
