@@ -42,11 +42,22 @@ export function ComingSoonModal({
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
-          className="bg-white rounded-2xl border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] max-w-md w-full"
+          className="bg-white rounded-2xl border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] max-w-md w-full overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Subtle Background */}
+          <div
+            className="absolute inset-0 opacity-5"
+            style={{
+              backgroundImage: 'url(/background.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+            aria-hidden="true"
+          />
+          
           {/* Header */}
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-t-xl border-b-4 border-black relative">
+          <div className="relative bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-t-xl border-b-4 border-black">
             <button
               onClick={onClose}
               className="absolute top-4 right-4 text-white hover:text-purple-100 transition-colors"

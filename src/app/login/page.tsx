@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Sparkles, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SunnyBackground } from '@/components/ui/SunnyBackground';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
@@ -53,33 +54,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-blue-50 to-purple-50 flex items-center justify-center p-6">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <SunnyBackground opacity={0.12} overlay={true}>
+      <div className="min-h-screen flex items-center justify-center p-6">
         <motion.div
-          animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
-          transition={{ duration: 6, repeat: Infinity }}
-          className="absolute top-20 left-10 text-6xl opacity-10"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
         >
-          ⭐
-        </motion.div>
-        <motion.div
-          animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
-          transition={{ duration: 5, repeat: Infinity }}
-          className="absolute bottom-20 right-10 text-5xl opacity-10"
-        >
-          🚀
-        </motion.div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
-      >
-        {/* Back to landing button */}
-        <Link href="/landing">
+          {/* Back to landing button */}
+          <Link href="/landing">
           <Button
             className="mb-4 font-semibold hover:bg-white/50"
           >
@@ -204,7 +188,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>🔒 Secure & encrypted • 🎓 Built in partnership with families</p>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </SunnyBackground>
   );
 }
