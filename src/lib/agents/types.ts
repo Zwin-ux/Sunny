@@ -63,6 +63,10 @@ export interface LearningState {
   currentDifficulty?: DifficultyLevel;
   sessionStartTime?: number;
   recentAchievements?: string[];
+  profileSummary?: ProfileSummary;
+  personalizedPlan?: PersonalizedLessonPlan;
+  adaptiveNarrative?: AdaptiveNarrativeState;
+  momentumScore?: number;
 }
 
 export interface LearningObjective {
@@ -219,6 +223,78 @@ export interface ContextEntry {
   timestamp: number;
   importance: number; // 0-1 importance for future reference
   tags: string[];
+}
+
+export interface ProfileSummary {
+  identityStatement: string;
+  coreStrengths: string[];
+  growthAreas: string[];
+  motivationalDrivers: string[];
+  preferredPacing: 'explorer' | 'steady' | 'accelerated';
+  collaborationStyle: 'solo-adventurer' | 'team-player' | 'balanced';
+}
+
+export interface LessonIdeaBlueprint {
+  rawIdea: string;
+  refinedTheme: string;
+  powerSkill: string;
+  desiredOutcome: string;
+  narrativeLens: string;
+}
+
+export interface ProgressionStage {
+  id: string;
+  name: string;
+  mission: string;
+  modality: ActivityType;
+  experience: string;
+  successCriteria: string;
+  upgradeSignal: string;
+}
+
+export interface PersonalizedLessonPlan {
+  id: string;
+  engineVersion: string;
+  focusArea: string;
+  drivingQuestion: string;
+  narrativeHook: string;
+  energyLevel: 'calm' | 'energized' | 'playful';
+  evolutionReason: string;
+  lessonIdea: LessonIdeaBlueprint;
+  progressionStages: ProgressionStage[];
+  recommendedActivities: PlanActivity[];
+  adaptationHighlights: string[];
+  celebrationMessage: string;
+  reflectionPrompt: string;
+  coCreationOpportunities: string[];
+}
+
+export interface PlanActivity {
+  id: string;
+  type: ActivityType;
+  title: string;
+  description: string;
+  personalizationReason: string;
+  expectedOutcome: string;
+  confidence: number;
+  pacing: 'quick-win' | 'deep-dive' | 'reflection';
+  stageId?: string;
+  stageName?: string;
+}
+
+export interface AdaptiveNarrativeState {
+  theme: string;
+  chapter: number;
+  momentum: number;
+  lastUpdated: number;
+  breadcrumbs: NarrativeBreadcrumb[];
+}
+
+export interface NarrativeBreadcrumb {
+  id: string;
+  summary: string;
+  timestamp: number;
+  impact: 'confidence' | 'skill' | 'creativity' | 'curiosity';
 }
 
 // Enhanced Student Profile for Agents
