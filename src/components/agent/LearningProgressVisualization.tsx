@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Brain, TrendingUp, Target, Zap, BookOpen, Award } from 'lucide-react';
+import { Brain, TrendingUp, Target, Zap, BookOpen, Award, Sparkles } from 'lucide-react';
 import { LearningState } from '@/lib/agents/types';
 
 interface LearningProgressVisualizationProps {
@@ -33,7 +33,15 @@ export function LearningProgressVisualization({
     );
   }
 
-  const { knowledgeMap, currentObjectives, learningPath, engagementMetrics } = learningState;
+  const {
+    knowledgeMap,
+    currentObjectives,
+    learningPath,
+    engagementMetrics,
+    personalizedPlan,
+    momentumScore,
+    profileSummary,
+  } = learningState;
 
   // Calculate overall progress
   const conceptsArray = knowledgeMap?.concepts ? Object.values(knowledgeMap.concepts) : [];
@@ -46,6 +54,13 @@ export function LearningProgressVisualization({
   // Get current learning velocity and engagement
   const velocity = 1.0; // Placeholder - would be calculated from engagement history
   const engagement = engagementMetrics?.currentLevel || 0.5;
+  const momentum = momentumScore ?? 0.6;
+  const energyLevel = personalizedPlan?.energyLevel ?? 'calm';
+  const energyColorMap: Record<string, string> = {
+    calm: 'from-sky-50 to-sky-100 border-sky-200 text-sky-700',
+    energized: 'from-rose-50 to-orange-100 border-rose-300 text-rose-700',
+    playful: 'from-green-50 to-lime-100 border-green-200 text-green-700',
+  };
 
   if (compact) {
     return (
@@ -116,7 +131,7 @@ export function LearningProgressVisualization({
       </div>
 
       {/* Learning Metrics Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-300 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-5 h-5 text-yellow-600" />
@@ -138,7 +153,151 @@ export function LearningProgressVisualization({
             {engagement > 0.8 ? 'Super focused! 🎯' : engagement > 0.5 ? 'Good energy! 💪' : 'Keep going! 🌟'}
           </p>
         </div>
+
+        <div
+          className={`bg-gradient-to-br ${energyColorMap[energyLevel] || 'from-blue-50 to-blue-100 border-blue-200 text-blue-700'} rounded-xl border-2 p-4`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-5 h-5" />
+            <span className="text-xs font-bold text-gray-700">Momentum Pulse</span>
+          </div>
+          <p className="text-2xl font-black">
+            {Math.round(momentum * 100)}%
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            {energyLevel === 'energized'
+              ? 'Riding a hot streak—let’s launch the next quest!'
+              : energyLevel === 'playful'
+              ? 'We’re remixing the vibe to keep things fun and fresh.'
+              : 'Smooth and steady progress—perfect for deep focus.'}
+          </p>
+        </div>
       </div>
+
+      {/* Personalized Plan */}
+      {personalizedPlan && (
+        <div className="mb-6 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border-2 border-purple-200 p-5">
+          <div className="flex flex-col md:flex-row md:items-start gap-4">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <h4 className="text-sm font-black text-purple-800">Agentic Lesson Engine</h4>
+                <span className="text-[10px] uppercase font-bold text-purple-500 bg-purple-100 rounded-full px-2 py-0.5">
+                  evolving live
+                </span>
+              </div>
+              <p className="text-lg font-bold text-purple-900">{personalizedPlan.narrativeHook}</p>
+              <p className="text-sm text-purple-700">
+                Focus Quest: <span className="font-semibold">{personalizedPlan.focusArea}</span>
+              </p>
+              <p className="text-sm text-gray-700">{personalizedPlan.drivingQuestion}</p>
+              {personalizedPlan.lessonIdea && (
+                <div className="text-xs text-gray-600 space-y-1 bg-white/70 border border-purple-100 rounded-lg p-3">
+                  <p className="font-semibold text-purple-700 uppercase tracking-wide">Lesson Idea Blueprint</p>
+                  <p>
+                    <span className="font-semibold text-purple-800">Spark:</span>{' '}
+                    {personalizedPlan.lessonIdea.refinedTheme}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-purple-800">Power Skill:</span>{' '}
+                    {personalizedPlan.lessonIdea.powerSkill}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-purple-800">Outcome:</span>{' '}
+                    {personalizedPlan.lessonIdea.desiredOutcome}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="md:w-56 bg-white rounded-xl border border-purple-200 p-4 space-y-2 shadow-sm">
+              <p className="text-xs font-semibold text-gray-500">Why this adapts to you</p>
+              <ul className="text-xs text-gray-700 space-y-1">
+                {personalizedPlan.adaptationHighlights.map((highlight, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <span className="text-purple-500">•</span>
+                    <span>{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs font-semibold text-purple-600">{personalizedPlan.celebrationMessage}</p>
+            </div>
+          </div>
+
+          {personalizedPlan.progressionStages?.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Progression Arc</p>
+              <div className="flex flex-col md:flex-row gap-3">
+                {personalizedPlan.progressionStages.map(stage => (
+                  <div
+                    key={stage.id}
+                    className="flex-1 bg-white rounded-xl border border-purple-200 p-3 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-purple-900">{stage.name}</p>
+                      <span className="text-[10px] font-semibold text-purple-600 bg-purple-100 rounded-full px-2 py-0.5">
+                        {stage.modality}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1">{stage.mission}</p>
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      Success: {stage.successCriteria}
+                    </p>
+                    <p className="text-[10px] text-purple-500 mt-1">
+                      Upgrade Signal: {stage.upgradeSignal}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Next experiences</p>
+            <div className="flex flex-col md:flex-row gap-3">
+              {personalizedPlan.recommendedActivities.map(activity => (
+                <div
+                  key={activity.id}
+                  className="flex-1 bg-white rounded-xl border border-purple-200 p-3 shadow-sm"
+                >
+                  <p className="text-sm font-black text-gray-900 mb-1">{activity.title}</p>
+                  <p className="text-xs text-gray-600 mb-2">{activity.description}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-purple-600 font-semibold">
+                    <span className="bg-purple-100 rounded-full px-2 py-0.5">{activity.type}</span>
+                    <span className="bg-purple-100 rounded-full px-2 py-0.5">{activity.pacing}</span>
+                    {activity.stageName && (
+                      <span className="bg-purple-100 rounded-full px-2 py-0.5">{activity.stageName}</span>
+                    )}
+                    <span className="bg-purple-100 rounded-full px-2 py-0.5">
+                      {Math.round(activity.confidence * 100)}% match
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2">{activity.personalizationReason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {personalizedPlan.reflectionPrompt && (
+              <div className="bg-white rounded-xl border border-purple-200 p-3 shadow-sm">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Reflection Prompt</p>
+                <p className="text-sm text-gray-700">{personalizedPlan.reflectionPrompt}</p>
+              </div>
+            )}
+            {personalizedPlan.coCreationOpportunities?.length > 0 && (
+              <div className="bg-white rounded-xl border border-purple-200 p-3 shadow-sm">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Co-Create with Sunny</p>
+                <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
+                  {personalizedPlan.coCreationOpportunities.map((idea, index) => (
+                    <li key={index}>{idea}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Current Objectives */}
       {currentObjectives && currentObjectives.length > 0 && (
@@ -205,6 +364,29 @@ export function LearningProgressVisualization({
                 {node.type}
               </motion.div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Identity Snapshot */}
+      {profileSummary && (
+        <div className="mt-6 bg-white border-2 border-blue-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Brain className="w-5 h-5 text-blue-500 mt-0.5" />
+            <div className="space-y-2">
+              <p className="text-sm font-bold text-gray-800">{profileSummary.identityStatement}</p>
+              <div className="flex flex-wrap gap-2 text-[11px] text-blue-700">
+                {profileSummary.coreStrengths.map((strength, index) => (
+                  <span key={index} className="bg-blue-100 px-2 py-0.5 rounded-full font-semibold">
+                    {strength}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Momentum style: <span className="font-semibold text-blue-600">{profileSummary.preferredPacing}</span> · Collaboration vibe:{' '}
+                <span className="font-semibold text-blue-600">{profileSummary.collaborationStyle}</span>
+              </p>
+            </div>
           </div>
         </div>
       )}

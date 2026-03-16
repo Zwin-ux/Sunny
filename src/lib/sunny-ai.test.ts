@@ -1,6 +1,16 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { generateSunnyResponse, generateMiniChallenge } from './sunny-ai';
 import OpenAI from 'openai';
+
+vi.mock('./runtimeMode', () => {
+  const isDemoMode = vi.fn(() => false);
+
+  return {
+    isDemoMode,
+    resetRuntimeModeCache: vi.fn(),
+    runtimeMode: { isDemoMode },
+  };
+});
 
 // Mock the OpenAI API
 vi.mock('openai', () => {
@@ -19,6 +29,10 @@ vi.mock('openai', () => {
 const mockOpenAI = new OpenAI() as any;
 
 describe('sunny-ai', () => {
+  beforeAll(() => {
+    process.env.OPENAI_API_KEY = 'sk-test';
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -88,7 +102,7 @@ describe('sunny-ai', () => {
       }
 
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
-      expect(result).toBe('Error: Could not connect to Sunny. Please try again.');
+      expect(result).toBe("Oops! Had a connection hiccup. But I'm still here! 🌟 What would you like to learn?");
     });
   });
 
@@ -140,8 +154,9 @@ describe('sunny-ai', () => {
       expect(challenge).toEqual(expect.objectContaining({
         type: 'multiple-choice',
         question: 'What is 2 + 2?',
+        options: ['3', '4', '5', '6'],
         correctAnswer: '4',
-        explanation: 'When you add two and two together, you get four!',
+        explanation: 'When you add two and two together, you get four! 🎉',
         points: 10,
         difficulty: 'easy',
         learningStyle: ['logical'],

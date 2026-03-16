@@ -17,6 +17,11 @@ import {
     ConceptMap,
     EngagementData
 } from './types';
+import {
+    createInitialNarrativeState,
+    evolvePersonalizedLesson,
+    summarizeProfile,
+} from './personalized-learning-engine';
 
 export interface OrchestratorConfig {
     maxConcurrentOperations: number;
@@ -31,6 +36,7 @@ export interface OrchestratorConfig {
 export class LearningOrchestrator extends EventEmitter {
     private agents: Map<AgentType, BaseAgent> = new Map();
     private learningStates: Map<string, LearningState> = new Map(); // studentId -> state
+    private profileSnapshots: Map<string, EnhancedStudentProfile> = new Map();
     private activeOperations: Map<string, Operation> = new Map();
     private config: OrchestratorConfig;
     private eventSystem: AgentEventSystem;
@@ -157,10 +163,14 @@ export class LearningOrchestrator extends EventEmitter {
             engagementMetrics: this.initializeEngagementData(profile),
             learningPath: [],
             contextHistory: [],
-            lastUpdated: Date.now()
+            lastUpdated: Date.now(),
+            profileSummary: summarizeProfile(profile),
+            adaptiveNarrative: createInitialNarrativeState(profile),
+            momentumScore: 0.6
         };
 
         this.learningStates.set(studentId, learningState);
+        this.profileSnapshots.set(studentId, profile);
         this.emit('learning:state:initialized', { studentId, sessionId });
 
         return learningState;
@@ -230,6 +240,8 @@ export class LearningOrchestrator extends EventEmitter {
                 this.config.conflictResolutionTimeout
             );
 
+            operation.decisions = decisions;
+
             // 4. Ensure coherence across decisions
             const coherentDecisions = this.coherenceManager.ensureCoherence(
                 decisions,
@@ -239,6 +251,20 @@ export class LearningOrchestrator extends EventEmitter {
 
             // 5. Execute decisions
             const results = await this.executeDecisions(coherentDecisions, studentId);
+
+            const personalization = evolvePersonalizedLesson({
+                studentId,
+                learningState,
+                profile: this.profileSnapshots.get(studentId),
+                interaction,
+                baseResponse: results.response
+            });
+
+            if (personalization) {
+                results.response = personalization.response;
+                results.actions = Array.from(new Set([...results.actions, ...personalization.actions]));
+                results.updates = { ...results.updates, ...personalization.updates };
+            }
 
             // 6. Update learning state with synchronization
             await this.updateLearningStateWithSync(studentId, results);

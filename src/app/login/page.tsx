@@ -188,6 +188,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>🔒 Secure & encrypted • 🎓 Built in partnership with families</p>
         </div>
+      </motion.div>
       </div>
     </SunnyBackground>
   );
